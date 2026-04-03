@@ -13,7 +13,7 @@ from app.main import app
 from app.models.base import Base
 from app.models.user import User, UserRole
 
-TEST_DATABASE_URL = settings.DATABASE_URL.replace("/netbill", "/netbill_test")
+TEST_DATABASE_URL = settings.DATABASE_URL.rsplit("/netbill", 1)[0] + "/netbill_test"
 
 engine = create_async_engine(TEST_DATABASE_URL, echo=False)
 TestSession = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
