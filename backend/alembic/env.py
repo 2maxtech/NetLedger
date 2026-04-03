@@ -9,6 +9,14 @@ from app.models.base import Base
 import app.models.user  # noqa: F401
 import app.models.plan  # noqa: F401
 import app.models.customer  # noqa: F401
+import app.models.invoice  # noqa: F401
+import app.models.payment  # noqa: F401
+import app.models.pppoe_session  # noqa: F401
+import app.models.session_traffic  # noqa: F401
+import app.models.bandwidth_usage  # noqa: F401
+import app.models.customer_activity  # noqa: F401
+import app.models.notification  # noqa: F401
+import app.models.disconnect_log  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
