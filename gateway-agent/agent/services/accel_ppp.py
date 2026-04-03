@@ -1,18 +1,41 @@
 import asyncio
+import socket
 import subprocess
+import time
+
+
+def accel_cmd_sync(command: str, host: str = "127.0.0.1", port: int = 2001) -> str:
+    """Execute a command via accel-ppp telnet CLI using raw sockets."""
+    s = socket.socket()
+    s.settimeout(5)
+    s.connect((host, port))
+    time.sleep(0.5)
+    s.recv(4096)  # consume banner + prompt
+    s.sendall(command.encode() + b"\r\n")
+    time.sleep(0.5)
+    chunks = []
+    while True:
+        try:
+            data = s.recv(4096)
+            if not data:
+                break
+            chunks.append(data)
+            if b"accel-ppp# " in data:
+                break
+        except socket.timeout:
+            break
+    s.close()
+    raw = b"".join(chunks).decode(errors="ignore")
+    # Strip prompt at the end
+    if "accel-ppp# " in raw:
+        raw = raw[:raw.rfind("accel-ppp# ")]
+    return raw.strip()
 
 
 async def accel_cmd(command: str) -> str:
-    """Execute a command via accel-ppp telnet CLI."""
-    proc = await asyncio.create_subprocess_exec(
-        "accel-cmd", command,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout, stderr = await proc.communicate()
-    if proc.returncode != 0:
-        raise RuntimeError(f"accel-cmd failed: {stderr.decode()}")
-    return stdout.decode()
+    """Execute a command via accel-ppp telnet CLI (async wrapper)."""
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, accel_cmd_sync, command)
 
 
 async def get_sessions() -> list[dict]:
@@ -58,6 +81,8 @@ def send_radius_packet(packet_type: str, attributes: dict, secret: str, server: 
         text=True,
         timeout=10,
     )
-    if result.returncode != 0:
+    output = result.stdout + result.stderr
+    # radclient returns non-zero for NAK responses — still useful info
+    if result.returncode != 0 and "Error parsing" in result.stderr:
         raise RuntimeError(f"radclient failed: {result.stderr}")
-    return result.stdout
+    return output
