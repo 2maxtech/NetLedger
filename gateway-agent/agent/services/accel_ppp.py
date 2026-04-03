@@ -40,7 +40,7 @@ async def accel_cmd(command: str) -> str:
 
 async def get_sessions() -> list[dict]:
     """Get all active PPPoE sessions from accel-ppp."""
-    output = await accel_cmd("show sessions")
+    output = await accel_cmd("show sessions sid,ifname,username,calling-sid,ip,rate-limit,type,state,uptime")
     sessions = []
     lines = output.strip().split("\n")
     if len(lines) < 2:
