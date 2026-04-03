@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.models.base import Base
 import app.models.user  # noqa: F401
 import app.models.plan  # noqa: F401
+import app.models.customer  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
