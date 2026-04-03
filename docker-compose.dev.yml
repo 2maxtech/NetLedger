@@ -1,0 +1,5 @@
+services:
+  backend:
+    environment:
+      SECRET_KEY: dev-secret-key-not-for-production
+      GATEWAY_API_KEY: dev-gateway-key
