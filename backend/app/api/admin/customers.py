@@ -1,14 +1,18 @@
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.customer import Customer, CustomerStatus
+from app.models.disconnect_log import DisconnectAction, DisconnectLog, DisconnectReason
 from app.models.user import User
 from app.schemas.customer import CustomerCreate, CustomerListResponse, CustomerResponse, CustomerUpdate
+from app.services import gateway
 
 router = APIRouter(prefix="/customers", tags=["customers"])
 
@@ -115,3 +119,93 @@ async def delete_customer(
 
     customer.status = CustomerStatus.terminated
     await db.flush()
+
+
+@router.post("/{customer_id}/disconnect", status_code=200)
+async def disconnect_customer(
+    customer_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Customer).where(Customer.id == customer_id))
+    customer = result.scalar_one_or_none()
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    try:
+        response = await gateway.disconnect_customer(str(customer.id), customer.pppoe_username)
+    except Exception:
+        response = {"detail": "Gateway unreachable, session may still be active"}
+
+    customer.status = CustomerStatus.disconnected
+    log = DisconnectLog(
+        customer_id=customer.id,
+        action=DisconnectAction.disconnect,
+        reason=DisconnectReason.manual,
+        performed_by=current_user.id,
+        performed_at=datetime.now(timezone.utc),
+    )
+    db.add(log)
+    await db.flush()
+    return {"status": "disconnected", "gateway_response": response}
+
+
+@router.post("/{customer_id}/reconnect", status_code=200)
+async def reconnect_customer(
+    customer_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Customer).where(Customer.id == customer_id))
+    customer = result.scalar_one_or_none()
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    try:
+        response = await gateway.reconnect_customer(str(customer.id), customer.pppoe_username)
+    except Exception:
+        response = {"detail": "Gateway unreachable"}
+
+    customer.status = CustomerStatus.active
+    log = DisconnectLog(
+        customer_id=customer.id,
+        action=DisconnectAction.reconnect,
+        reason=DisconnectReason.manual,
+        performed_by=current_user.id,
+        performed_at=datetime.now(timezone.utc),
+    )
+    db.add(log)
+    await db.flush()
+    return {"status": "reconnected", "gateway_response": response}
+
+
+@router.post("/{customer_id}/throttle", status_code=200)
+async def throttle_customer(
+    customer_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Customer).where(Customer.id == customer_id))
+    customer = result.scalar_one_or_none()
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    try:
+        response = await gateway.throttle_customer(
+            str(customer.id), customer.pppoe_username,
+            settings.THROTTLE_DOWNLOAD_MBPS, settings.THROTTLE_UPLOAD_KBPS,
+        )
+    except Exception:
+        response = {"detail": "Gateway unreachable"}
+
+    customer.status = CustomerStatus.suspended
+    log = DisconnectLog(
+        customer_id=customer.id,
+        action=DisconnectAction.throttle,
+        reason=DisconnectReason.manual,
+        performed_by=current_user.id,
+        performed_at=datetime.now(timezone.utc),
+    )
+    db.add(log)
+    await db.flush()
+    return {"status": "throttled", "gateway_response": response}

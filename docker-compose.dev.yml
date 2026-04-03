@@ -2,4 +2,5 @@ services:
   backend:
     environment:
       SECRET_KEY: dev-secret-key-not-for-production
-      GATEWAY_API_KEY: dev-gateway-key
+      GATEWAY_API_KEY: dev-gateway-key-2maxnet
+      GATEWAY_AGENT_URL: http://192.168.40.41:8443
