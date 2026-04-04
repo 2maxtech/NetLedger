@@ -15,7 +15,8 @@ class CustomerCreate(BaseModel):
     pppoe_username: str
     pppoe_password: str
     plan_id: uuid.UUID
-    kerio_user_id: str | None = None
+    mikrotik_secret_id: str | None = None
+    mikrotik_queue_id: str | None = None
     mac_address: str | None = None
 
 
@@ -28,7 +29,8 @@ class CustomerUpdate(BaseModel):
     pppoe_password: str | None = None
     plan_id: uuid.UUID | None = None
     status: CustomerStatus | None = None
-    kerio_user_id: str | None = None
+    mikrotik_secret_id: str | None = None
+    mikrotik_queue_id: str | None = None
     mac_address: str | None = None
 
 
@@ -43,7 +45,8 @@ class CustomerResponse(BaseModel):
     plan_id: uuid.UUID
     plan: PlanResponse | None = None
     created_at: datetime
-    kerio_user_id: str | None = None
+    mikrotik_secret_id: str | None = None
+    mikrotik_queue_id: str | None = None
     mac_address: str | None = None
 
     model_config = {"from_attributes": True}

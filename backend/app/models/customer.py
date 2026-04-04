@@ -28,7 +28,8 @@ class Customer(BaseModel):
         Enum(CustomerStatus), default=CustomerStatus.active, nullable=False
     )
     plan_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("plans.id"), nullable=False)
-    kerio_user_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    mikrotik_secret_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    mikrotik_queue_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     mac_address: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     plan = relationship("Plan", lazy="selectin")
