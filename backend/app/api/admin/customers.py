@@ -12,6 +12,7 @@ from app.models.customer import Customer, CustomerStatus
 from app.models.disconnect_log import DisconnectAction, DisconnectLog, DisconnectReason
 from app.models.user import User
 from app.schemas.customer import CustomerCreate, CustomerListResponse, CustomerResponse, CustomerUpdate
+from app.services.kerio import kerio
 
 logger = logging.getLogger(__name__)
 
@@ -133,8 +134,14 @@ async def disconnect_customer(
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    # Replace gateway calls with placeholder - will be replaced by Kerio adapter
-    response = {"detail": "Kerio integration pending"}
+    response = {"detail": "No Kerio user linked"}
+    if customer.kerio_user_id:
+        try:
+            await kerio.login()
+            await kerio.disable_user(customer.kerio_user_id)
+            response = {"detail": "User disabled in Kerio"}
+        except Exception as e:
+            response = {"detail": f"Kerio error: {e}"}
     logger.info(f"Customer {customer.id} status changed to disconnected")
 
     customer.status = CustomerStatus.disconnected
@@ -161,8 +168,14 @@ async def reconnect_customer(
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    # Replace gateway calls with placeholder - will be replaced by Kerio adapter
-    response = {"detail": "Kerio integration pending"}
+    response = {"detail": "No Kerio user linked"}
+    if customer.kerio_user_id:
+        try:
+            await kerio.login()
+            await kerio.enable_user(customer.kerio_user_id)
+            response = {"detail": "User enabled in Kerio"}
+        except Exception as e:
+            response = {"detail": f"Kerio error: {e}"}
     logger.info(f"Customer {customer.id} status changed to active")
 
     customer.status = CustomerStatus.active
@@ -189,8 +202,14 @@ async def throttle_customer(
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    # Replace gateway calls with placeholder - will be replaced by Kerio adapter
-    response = {"detail": "Kerio integration pending"}
+    response = {"detail": "No Kerio user linked"}
+    if customer.kerio_user_id:
+        try:
+            await kerio.login()
+            await kerio.disable_user(customer.kerio_user_id)
+            response = {"detail": "User disabled in Kerio (throttle)"}
+        except Exception as e:
+            response = {"detail": f"Kerio error: {e}"}
     logger.info(f"Customer {customer.id} status changed to suspended")
 
     customer.status = CustomerStatus.suspended

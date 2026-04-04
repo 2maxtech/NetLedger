@@ -96,7 +96,7 @@ async def record_payment(
     method,
     reference: str | None,
     received_by=None,
-    skip_gateway: bool = False,
+    skip_kerio: bool = False,
 ) -> Payment:
     """Record a payment against an invoice. Auto-reconnects if fully paid and customer was suspended/disconnected."""
     result = await db.execute(select(Invoice).where(Invoice.id == invoice_id))
@@ -139,9 +139,16 @@ async def record_payment(
                 )
             )
             if not other_overdue.scalars().first():
-                if not skip_gateway:
-                    logger.info(f"Kerio integration pending: reconnect {customer.id}")
-                    # Kerio adapter will be wired here
+                if not skip_kerio:
+                    if customer.kerio_user_id:
+                        from app.services.kerio import kerio
+                        try:
+                            await kerio.login()
+                            await kerio.enable_user(customer.kerio_user_id)
+                        except Exception as e:
+                            logger.error(f"Kerio enable failed for {customer.id}: {e}")
+                    else:
+                        logger.warning(f"Customer {customer.id} has no kerio_user_id, skipping")
 
                 customer.status = CustomerStatus.active
                 log = DisconnectLog(
@@ -176,7 +183,7 @@ async def check_overdue_invoices(db: AsyncSession) -> int:
     return len(invoices)
 
 
-async def process_graduated_disconnect(db: AsyncSession, skip_gateway: bool = False) -> dict:
+async def process_graduated_disconnect(db: AsyncSession, skip_kerio: bool = False) -> dict:
     """Apply graduated disconnect enforcement on overdue invoices."""
     today = date.today()
     result = await db.execute(
@@ -199,9 +206,16 @@ async def process_graduated_disconnect(db: AsyncSession, skip_gateway: bool = Fa
                 days_overdue >= settings.BILLING_THROTTLE_DAYS_AFTER_DUE
                 and customer.status == CustomerStatus.active
             ):
-                if not skip_gateway:
-                    logger.info(f"Kerio integration pending: throttle {customer.id}")
-                    # Kerio adapter will be wired here
+                if not skip_kerio:
+                    if customer.kerio_user_id:
+                        from app.services.kerio import kerio
+                        try:
+                            await kerio.login()
+                            await kerio.disable_user(customer.kerio_user_id)
+                        except Exception as e:
+                            logger.error(f"Kerio throttle/disable failed for {customer.id}: {e}")
+                    else:
+                        logger.warning(f"Customer {customer.id} has no kerio_user_id, skipping")
 
                 customer.status = CustomerStatus.suspended
                 db.add(DisconnectLog(
@@ -218,9 +232,16 @@ async def process_graduated_disconnect(db: AsyncSession, skip_gateway: bool = Fa
                 days_overdue >= settings.BILLING_DISCONNECT_DAYS_AFTER_DUE
                 and customer.status == CustomerStatus.suspended
             ):
-                if not skip_gateway:
-                    logger.info(f"Kerio integration pending: disconnect {customer.id}")
-                    # Kerio adapter will be wired here
+                if not skip_kerio:
+                    if customer.kerio_user_id:
+                        from app.services.kerio import kerio
+                        try:
+                            await kerio.login()
+                            await kerio.disable_user(customer.kerio_user_id)
+                        except Exception as e:
+                            logger.error(f"Kerio throttle/disable failed for {customer.id}: {e}")
+                    else:
+                        logger.warning(f"Customer {customer.id} has no kerio_user_id, skipping")
 
                 customer.status = CustomerStatus.disconnected
                 db.add(DisconnectLog(
