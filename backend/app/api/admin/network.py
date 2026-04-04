@@ -1,14 +1,17 @@
 import logging
 import re
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import and_, extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_role
 from app.models.customer import Customer, CustomerStatus
+from app.models.invoice import Invoice, InvoiceStatus
+from app.models.payment import Payment
 from app.models.plan import Plan
 from app.models.user import User
 from app.services.mikrotik import mikrotik
@@ -37,6 +40,167 @@ def _parse_rate(rate_str: str) -> tuple[int, int]:
     return to_mbps(download_str), to_mbps(upload_str)
 
 router = APIRouter(prefix="/network", tags=["network"])
+
+
+@router.get("/dashboard")
+async def get_dashboard(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Aggregated dashboard stats — MikroTik live data + billing summary."""
+    today = date.today()
+    this_month_start = today.replace(day=1)
+    month_start_dt = datetime(this_month_start.year, this_month_start.month, 1, tzinfo=timezone.utc)
+
+    # --- DB Stats (parallel queries) ---
+    customers_by_status = await db.execute(
+        select(Customer.status, func.count(Customer.id)).group_by(Customer.status)
+    )
+    status_counts = {row[0].value: row[1] for row in customers_by_status}
+
+    total_customers = sum(status_counts.values())
+    active = status_counts.get("active", 0)
+    suspended = status_counts.get("suspended", 0)
+    disconnected = status_counts.get("disconnected", 0)
+
+    # MRR = sum of monthly_price for all active customers with plans
+    mrr_result = await db.execute(
+        select(func.coalesce(func.sum(Plan.monthly_price), 0))
+        .join(Customer, Customer.plan_id == Plan.id)
+        .where(Customer.status == CustomerStatus.active)
+    )
+    mrr = float(mrr_result.scalar() or 0)
+
+    # Revenue this month
+    billed_result = await db.execute(
+        select(func.coalesce(func.sum(Invoice.amount), 0)).where(
+            and_(
+                Invoice.issued_at >= month_start_dt,
+                Invoice.status != InvoiceStatus.void,
+            )
+        )
+    )
+    billed_this_month = float(billed_result.scalar() or 0)
+
+    collected_result = await db.execute(
+        select(func.coalesce(func.sum(Payment.amount), 0)).where(
+            Payment.received_at >= month_start_dt,
+        )
+    )
+    collected_this_month = float(collected_result.scalar() or 0)
+
+    # Overdue
+    overdue_result = await db.execute(
+        select(func.count(Invoice.id), func.coalesce(func.sum(Invoice.amount), 0)).where(
+            Invoice.status == InvoiceStatus.overdue
+        )
+    )
+    overdue_row = overdue_result.one()
+    overdue_count = overdue_row[0]
+    overdue_amount = float(overdue_row[1])
+
+    # Recent payments (last 5)
+    recent_payments_result = await db.execute(
+        select(Payment)
+        .order_by(Payment.received_at.desc())
+        .limit(5)
+    )
+    recent_payments = [
+        {
+            "id": str(p.id),
+            "amount": str(p.amount),
+            "method": p.method.value,
+            "received_at": p.received_at.isoformat() if p.received_at else None,
+        }
+        for p in recent_payments_result.scalars().all()
+    ]
+
+    # Revenue last 6 months
+    revenue_trend = []
+    for i in range(5, -1, -1):
+        m = today.month - i
+        y = today.year
+        while m <= 0:
+            m += 12
+            y -= 1
+        m_start = datetime(y, m, 1, tzinfo=timezone.utc)
+        if m == 12:
+            m_end = datetime(y + 1, 1, 1, tzinfo=timezone.utc)
+        else:
+            m_end = datetime(y, m + 1, 1, tzinfo=timezone.utc)
+
+        month_collected = await db.execute(
+            select(func.coalesce(func.sum(Payment.amount), 0)).where(
+                and_(Payment.received_at >= m_start, Payment.received_at < m_end)
+            )
+        )
+        revenue_trend.append({
+            "month": f"{y}-{m:02d}",
+            "collected": float(month_collected.scalar() or 0),
+        })
+
+    # --- MikroTik Live Stats ---
+    mt_stats = {
+        "connected": False,
+        "identity": "",
+        "uptime": "",
+        "cpu_load": "",
+        "free_memory": 0,
+        "total_memory": 0,
+        "active_sessions": 0,
+        "interfaces": [],
+    }
+    try:
+        identity = await mikrotik.get_identity()
+        resources = await mikrotik.get_resources()
+        sessions = await mikrotik.get_active_sessions()
+
+        # Interface traffic
+        interfaces_resp = await mikrotik._request("GET", "interface")
+        interfaces = []
+        for iface in interfaces_resp.json():
+            if iface.get("type") in ("ether", "pppoe-in"):
+                interfaces.append({
+                    "name": iface.get("name", ""),
+                    "type": iface.get("type", ""),
+                    "running": iface.get("running", "false") == "true",
+                    "rx_bytes": int(iface.get("rx-byte", 0)),
+                    "tx_bytes": int(iface.get("tx-byte", 0)),
+                })
+
+        mt_stats = {
+            "connected": True,
+            "identity": identity,
+            "uptime": resources.get("uptime", ""),
+            "cpu_load": resources.get("cpu-load", "0"),
+            "free_memory": int(resources.get("free-memory", 0)),
+            "total_memory": int(resources.get("total-memory", 0)),
+            "active_sessions": len(sessions),
+            "interfaces": interfaces,
+            "version": resources.get("version", ""),
+        }
+    except Exception as e:
+        mt_stats["error"] = str(e)
+
+    return {
+        "subscribers": {
+            "total": total_customers,
+            "active": active,
+            "suspended": suspended,
+            "disconnected": disconnected,
+        },
+        "billing": {
+            "mrr": mrr,
+            "billed_this_month": billed_this_month,
+            "collected_this_month": collected_this_month,
+            "collection_rate": round(collected_this_month / billed_this_month * 100, 1) if billed_this_month > 0 else 0,
+            "overdue_count": overdue_count,
+            "overdue_amount": overdue_amount,
+        },
+        "recent_payments": recent_payments,
+        "revenue_trend": revenue_trend,
+        "mikrotik": mt_stats,
+    }
 
 
 @router.get("/active-sessions")
