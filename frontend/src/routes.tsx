@@ -15,6 +15,8 @@ const Users = lazy(() => import('./pages/system/Users'));
 const SystemStatus = lazy(() => import('./pages/system/SystemStatus'));
 const Logs = lazy(() => import('./pages/system/Logs'));
 
+const ActiveUsers = lazy(() => import('./pages/ActiveUsers'));
+
 const PortalLogin = lazy(() => import('./pages/portal/PortalLogin'));
 const PortalDashboard = lazy(() => import('./pages/portal/PortalDashboard'));
 const PortalInvoices = lazy(() => import('./pages/portal/PortalInvoices'));
@@ -59,6 +61,7 @@ export const router = createBrowserRouter([
       { path: 'plans', element: wrap(Plans) },
       { path: 'billing/invoices', element: wrap(Invoices) },
       { path: 'billing/payments', element: wrap(Payments) },
+      { path: 'active-users', element: wrap(ActiveUsers) },
       { path: 'system/users', element: wrap(Users) },
       { path: 'system/status', element: wrap(SystemStatus) },
       { path: 'system/logs', element: wrap(Logs) },

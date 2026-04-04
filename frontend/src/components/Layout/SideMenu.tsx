@@ -4,6 +4,7 @@ import type { MenuProps } from 'antd';
 import {
   DashboardOutlined, TeamOutlined, AppstoreOutlined,
   FileTextOutlined, DollarOutlined, UserOutlined, DesktopOutlined, FileSearchOutlined,
+  WifiOutlined,
 } from '@ant-design/icons';
 
 type MenuItem = Required<MenuProps>['items'][number];
@@ -16,6 +17,7 @@ const menuItems: MenuItem[] = [
     { key: '/billing/invoices', icon: <FileTextOutlined />, label: 'Invoices' },
     { key: '/billing/payments', icon: <DollarOutlined />, label: 'Payments' },
   ]},
+  { key: '/active-users', icon: <WifiOutlined />, label: 'Active Users' },
   { key: 'system', icon: <DesktopOutlined />, label: 'System', children: [
     { key: '/system/users', icon: <UserOutlined />, label: 'Staff Users' },
     { key: '/system/status', icon: <DesktopOutlined />, label: 'System Status' },
@@ -39,7 +41,11 @@ const SideMenu = () => {
       defaultOpenKeys={['billing', 'system']}
       items={menuItems}
       onClick={onClick}
-      style={{ borderRight: 0 }}
+      style={{
+        borderRight: 0,
+        paddingTop: 8,
+        background: 'transparent',
+      }}
     />
   );
 };
