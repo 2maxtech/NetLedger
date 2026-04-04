@@ -1,210 +1,299 @@
-import { Row, Col, Card, Typography, Badge } from 'antd';
+import { useQuery } from '@tanstack/react-query';
+import { Row, Col, Card, Typography, Statistic, Tag, Table, Progress, Space, Badge } from 'antd';
 import {
   TeamOutlined, WifiOutlined, DollarOutlined, WarningOutlined,
-  ArrowUpOutlined, ArrowDownOutlined,
+  CloudServerOutlined, CheckCircleOutlined, PauseCircleOutlined,
+  RiseOutlined,
 } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
-import ReactECharts from 'echarts-for-react';
-import StatCard from '../components/StatCard';
-import { getCustomers } from '../api/customers';
-import { useAuth } from '../hooks/useAuth';
+import dayjs from 'dayjs';
+import { getDashboard } from '../api/network';
+
+const formatBytes = (bytes: number) => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+};
+
+const formatPeso = (amount: number) =>
+  `₱${amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
 const Dashboard = () => {
-  const { user } = useAuth();
-
-  const { data: customersData } = useQuery({
-    queryKey: ['customers-count'],
-    queryFn: () => getCustomers({ page: 1, page_size: 1 }),
+  const { data } = useQuery({
+    queryKey: ['dashboard'],
+    queryFn: () => getDashboard().then((r) => r.data),
+    refetchInterval: 30000,
   });
 
-  const totalCustomers = customersData?.data?.total ?? 0;
+  const subs = data?.subscribers || { total: 0, active: 0, suspended: 0, disconnected: 0 };
+  const billing = data?.billing || { mrr: 0, billed_this_month: 0, collected_this_month: 0, collection_rate: 0, overdue_count: 0, overdue_amount: 0 };
+  const mt = data?.mikrotik || { connected: false, identity: '', uptime: '', cpu_load: '0', free_memory: 0, total_memory: 1, active_sessions: 0, interfaces: [], version: '' };
+  const trend = data?.revenue_trend || [];
+  const payments = data?.recent_payments || [];
 
-  const trafficChartOption = {
-    tooltip: {
-      trigger: 'axis',
-      backgroundColor: '#3d2a0a',
-      borderColor: 'rgba(255,255,255,0.1)',
-      textStyle: { color: '#e2e8f0' },
-    },
-    legend: { data: ['Download', 'Upload'], textStyle: { color: '#64748b' } },
-    grid: { left: 16, right: 16, top: 40, bottom: 24, containLabel: true },
-    xAxis: {
-      type: 'category',
-      data: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
-      axisLine: { lineStyle: { color: '#e2e8f0' } },
-      axisLabel: { color: '#94a3b8' },
-    },
-    yAxis: {
-      type: 'value',
-      name: 'Mbps',
-      nameTextStyle: { color: '#94a3b8' },
-      splitLine: { lineStyle: { color: '#f1f5f9' } },
-      axisLabel: { color: '#94a3b8' },
-    },
-    series: [
-      {
-        name: 'Download',
-        type: 'line',
-        smooth: true,
-        areaStyle: { opacity: 0.15, color: '#e8700a' },
-        data: [20, 15, 30, 65, 80, 55, 35],
-        itemStyle: { color: '#e8700a' },
-        lineStyle: { width: 2 },
-        symbol: 'circle',
-        symbolSize: 4,
-      },
-      {
-        name: 'Upload',
-        type: 'line',
-        smooth: true,
-        areaStyle: { opacity: 0.15, color: '#f9a825' },
-        data: [5, 3, 8, 15, 20, 12, 8],
-        itemStyle: { color: '#f9a825' },
-        lineStyle: { width: 2 },
-        symbol: 'circle',
-        symbolSize: 4,
-      },
-    ],
-  };
-
-  const hourOfDay = new Date().getHours();
-  const greeting = hourOfDay < 12 ? 'Good morning' : hourOfDay < 18 ? 'Good afternoon' : 'Good evening';
+  const memPercent = mt.total_memory > 0 ? Math.round((1 - mt.free_memory / mt.total_memory) * 100) : 0;
+  const maxTrend = Math.max(...trend.map((t) => t.collected), 1);
 
   return (
     <div>
-      {/* Welcome Banner */}
-      <div style={{
-        background: 'linear-gradient(135deg, #1c1306 0%, #3d2a0a 100%)',
-        borderRadius: 12,
-        padding: '20px 28px',
-        marginBottom: 24,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
-        <div>
-          <Typography.Title level={4} style={{ color: '#ffffff', margin: 0, fontWeight: 600 }}>
-            {greeting}, {user?.username ?? 'Admin'}
-          </Typography.Title>
-          <Typography.Text style={{ color: '#94a3b8', fontSize: 13 }}>
-            Here's what's happening on your network today.
-          </Typography.Text>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Badge status="success" />
-          <Typography.Text style={{ color: '#10b981', fontSize: 13, fontWeight: 500 }}>
-            Network Online
-          </Typography.Text>
-        </div>
+      {/* Header */}
+      <div style={{ marginBottom: 24 }}>
+        <Typography.Title level={3} style={{ margin: 0 }}>Dashboard</Typography.Title>
+        <Typography.Text type="secondary">
+          {mt.connected ? (
+            <Space>
+              <Badge status="success" />
+              {mt.identity} — RouterOS {mt.version} — up {mt.uptime}
+            </Space>
+          ) : (
+            <Space><Badge status="error" />MikroTik disconnected</Space>
+          )}
+        </Typography.Text>
       </div>
 
-      {/* Stat Cards */}
-      <Row gutter={[16, 16]}>
+      {/* Row 1: Subscriber Stats */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard
-            title="Online Customers"
-            value="--"
-            prefix={<WifiOutlined />}
-            valueStyle={{ color: '#10b981' }}
-          />
+          <Card>
+            <Statistic
+              title="Total Subscribers"
+              value={subs.total}
+              prefix={<TeamOutlined style={{ color: '#e8700a' }} />}
+            />
+          </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard
-            title="Total Customers"
-            value={totalCustomers}
-            prefix={<TeamOutlined />}
-          />
+          <Card>
+            <Statistic
+              title="Active"
+              value={subs.active}
+              prefix={<CheckCircleOutlined style={{ color: '#10b981' }} />}
+              suffix={subs.total > 0 ? <Typography.Text type="secondary" style={{ fontSize: 14 }}>{`/ ${subs.total}`}</Typography.Text> : null}
+            />
+          </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard
-            title="Monthly Revenue"
-            value="--"
-            prefix={<DollarOutlined />}
-            valueStyle={{ color: '#e8700a' }}
-          />
+          <Card>
+            <Statistic
+              title="Suspended"
+              value={subs.suspended}
+              prefix={<PauseCircleOutlined style={{ color: '#f59e0b' }} />}
+            />
+          </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard
-            title="Overdue Invoices"
-            value="--"
-            prefix={<WarningOutlined />}
-            valueStyle={{ color: '#f59e0b' }}
-          />
+          <Card>
+            <Statistic
+              title="PPPoE Online"
+              value={mt.active_sessions}
+              prefix={<WifiOutlined style={{ color: '#e8700a' }} />}
+              suffix={subs.active > 0 ? <Typography.Text type="secondary" style={{ fontSize: 14 }}>{`/ ${subs.active}`}</Typography.Text> : null}
+            />
+          </Card>
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
-        {/* Traffic Chart */}
-        <Col xs={24} lg={16}>
+      {/* Row 2: Revenue Stats */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Monthly Recurring Revenue"
+              value={billing.mrr}
+              prefix={<DollarOutlined style={{ color: '#e8700a' }} />}
+              formatter={(val) => formatPeso(val as number)}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Collected This Month"
+              value={billing.collected_this_month}
+              prefix={<RiseOutlined style={{ color: '#10b981' }} />}
+              formatter={(val) => formatPeso(val as number)}
+            />
+            {billing.billed_this_month > 0 && (
+              <Progress
+                percent={billing.collection_rate}
+                size="small"
+                strokeColor="#10b981"
+                style={{ marginTop: 8 }}
+                format={(p) => `${p}%`}
+              />
+            )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Billed This Month"
+              value={billing.billed_this_month}
+              prefix={<DollarOutlined style={{ color: '#64748b' }} />}
+              formatter={(val) => formatPeso(val as number)}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title="Overdue"
+              value={billing.overdue_count}
+              prefix={<WarningOutlined style={{ color: '#ef4444' }} />}
+              suffix={billing.overdue_amount > 0 ? <Typography.Text type="secondary" style={{ fontSize: 12 }}>{formatPeso(billing.overdue_amount)}</Typography.Text> : null}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Row 3: MikroTik Health + Revenue Trend */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} lg={12}>
           <Card
             title={
-              <span style={{ color: '#1c1306', fontWeight: 600 }}>Network Traffic</span>
+              <Space>
+                <CloudServerOutlined style={{ color: '#e8700a' }} />
+                <span>MikroTik Router</span>
+                <Tag color={mt.connected ? 'green' : 'red'}>{mt.connected ? 'Online' : 'Offline'}</Tag>
+              </Space>
             }
-            extra={
-              <div style={{ display: 'flex', gap: 16, fontSize: 12, color: '#94a3b8' }}>
-                <span><ArrowDownOutlined style={{ color: '#e8700a' }} /> Download</span>
-                <span><ArrowUpOutlined style={{ color: '#f9a825' }} /> Upload</span>
-              </div>
-            }
-            style={{ borderRadius: 12 }}
-            styles={{ header: { borderBottom: '1px solid #f1f5f9' } }}
+            style={{ height: '100%' }}
           >
-            <ReactECharts option={trafficChartOption} style={{ height: 300 }} />
+            <Row gutter={[16, 16]}>
+              <Col span={8}>
+                <div style={{ textAlign: 'center' }}>
+                  <Progress
+                    type="dashboard"
+                    percent={Number(mt.cpu_load) || 0}
+                    size={80}
+                    strokeColor={Number(mt.cpu_load) > 80 ? '#ef4444' : '#e8700a'}
+                  />
+                  <div style={{ marginTop: 4, fontSize: 12, color: '#64748b' }}>CPU</div>
+                </div>
+              </Col>
+              <Col span={8}>
+                <div style={{ textAlign: 'center' }}>
+                  <Progress
+                    type="dashboard"
+                    percent={memPercent}
+                    size={80}
+                    strokeColor={memPercent > 80 ? '#ef4444' : '#f9a825'}
+                  />
+                  <div style={{ marginTop: 4, fontSize: 12, color: '#64748b' }}>Memory</div>
+                </div>
+              </Col>
+              <Col span={8}>
+                <div style={{ textAlign: 'center' }}>
+                  <Statistic
+                    value={mt.active_sessions}
+                    suffix="sessions"
+                    valueStyle={{ fontSize: 24, color: '#e8700a' }}
+                  />
+                  <div style={{ fontSize: 12, color: '#64748b' }}>PPPoE Active</div>
+                </div>
+              </Col>
+            </Row>
+            {mt.interfaces.length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <Typography.Text strong style={{ fontSize: 13 }}>Interface Traffic</Typography.Text>
+                <Table
+                  size="small"
+                  pagination={false}
+                  dataSource={mt.interfaces}
+                  rowKey="name"
+                  style={{ marginTop: 8 }}
+                  columns={[
+                    {
+                      title: 'Interface',
+                      dataIndex: 'name',
+                      render: (name: string, r: any) => (
+                        <Space>
+                          <Badge status={r.running ? 'success' : 'default'} />
+                          {name}
+                        </Space>
+                      ),
+                    },
+                    { title: 'RX', dataIndex: 'rx_bytes', render: (v: number) => formatBytes(v), align: 'right' as const },
+                    { title: 'TX', dataIndex: 'tx_bytes', render: (v: number) => formatBytes(v), align: 'right' as const },
+                  ]}
+                />
+              </div>
+            )}
           </Card>
         </Col>
 
-        {/* System Health */}
-        <Col xs={24} lg={8}>
+        <Col xs={24} lg={12}>
           <Card
-            title={<span style={{ color: '#1c1306', fontWeight: 600 }}>System Health</span>}
-            style={{ borderRadius: 12, height: '100%' }}
-            styles={{ header: { borderBottom: '1px solid #f1f5f9' } }}
+            title={
+              <Space>
+                <RiseOutlined style={{ color: '#10b981' }} />
+                <span>Revenue Trend (6 Months)</span>
+              </Space>
+            }
+            style={{ height: '100%' }}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography.Text style={{ color: '#475569', fontSize: 13 }}>Router / Firewall</Typography.Text>
-                <span style={{
-                  background: 'rgba(16,185,129,0.1)',
-                  color: '#10b981',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  padding: '2px 10px',
-                  borderRadius: 20,
-                }}>ONLINE</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography.Text style={{ color: '#475569', fontSize: 13 }}>PPPoE Server</Typography.Text>
-                <span style={{
-                  background: 'rgba(16,185,129,0.1)',
-                  color: '#10b981',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  padding: '2px 10px',
-                  borderRadius: 20,
-                }}>ONLINE</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography.Text style={{ color: '#475569', fontSize: 13 }}>Billing Engine</Typography.Text>
-                <span style={{
-                  background: 'rgba(16,185,129,0.1)',
-                  color: '#10b981',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  padding: '2px 10px',
-                  borderRadius: 20,
-                }}>ONLINE</span>
-              </div>
-              <div style={{
-                marginTop: 8,
-                padding: '12px 14px',
-                background: '#f8fafc',
-                borderRadius: 8,
-                border: '1px solid #e2e8f0',
-              }}>
-                <Typography.Text style={{ color: '#94a3b8', fontSize: 12 }}>
-                  MikroTik integration active. Live PPPoE stats available in Active Users.
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {trend.map((t) => (
+                <div key={t.month} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Typography.Text style={{ width: 60, fontSize: 12, color: '#64748b' }}>
+                    {dayjs(t.month + '-01').format('MMM YY')}
+                  </Typography.Text>
+                  <div style={{ flex: 1 }}>
+                    <div
+                      style={{
+                        height: 24,
+                        width: `${Math.max((t.collected / maxTrend) * 100, 2)}%`,
+                        background: 'linear-gradient(90deg, #e8700a, #f9a825)',
+                        borderRadius: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        paddingLeft: 8,
+                        minWidth: 40,
+                      }}
+                    >
+                      <Typography.Text style={{ fontSize: 11, color: '#fff', fontWeight: 600 }}>
+                        {t.collected > 0 ? formatPeso(t.collected) : ''}
+                      </Typography.Text>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Recent Payments */}
+            <div style={{ marginTop: 24 }}>
+              <Typography.Text strong style={{ fontSize: 13 }}>Recent Payments</Typography.Text>
+              {payments.length > 0 ? (
+                <Table
+                  size="small"
+                  pagination={false}
+                  dataSource={payments}
+                  rowKey="id"
+                  style={{ marginTop: 8 }}
+                  columns={[
+                    {
+                      title: 'Amount',
+                      dataIndex: 'amount',
+                      render: (v: string) => <span style={{ fontWeight: 500, color: '#10b981' }}>{formatPeso(parseFloat(v))}</span>,
+                    },
+                    {
+                      title: 'Method',
+                      dataIndex: 'method',
+                      render: (m: string) => <Tag>{m}</Tag>,
+                    },
+                    {
+                      title: 'Date',
+                      dataIndex: 'received_at',
+                      render: (d: string) => d ? dayjs(d).format('MMM D, h:mm A') : '-',
+                    },
+                  ]}
+                />
+              ) : (
+                <Typography.Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                  No payments this month
                 </Typography.Text>
-              </div>
+              )}
             </div>
           </Card>
         </Col>
