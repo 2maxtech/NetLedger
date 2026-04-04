@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+  .header { display: flex; justify-content: space-between; margin-bottom: 30px; }
+  .company { font-size: 24px; font-weight: bold; color: #0d9488; }
+  .company-sub { font-size: 12px; color: #666; }
+  .invoice-title { font-size: 28px; color: #0f172a; text-align: right; }
+  .invoice-meta { text-align: right; font-size: 13px; color: #666; }
+  .divider { border-top: 2px solid #0d9488; margin: 20px 0; }
+  .bill-to { margin-bottom: 20px; }
+  .bill-to h3 { color: #0f172a; margin-bottom: 5px; }
+  table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+  th { background: #0f172a; color: white; padding: 10px; text-align: left; }
+  td { padding: 10px; border-bottom: 1px solid #ddd; }
+  .total-row td { font-weight: bold; font-size: 16px; border-top: 2px solid #0d9488; }
+  .status { display: inline-block; padding: 4px 12px; border-radius: 4px; font-weight: bold; font-size: 13px; }
+  .status-pending { background: #0d948820; color: #0d9488; }
+  .status-paid { background: #10b98120; color: #10b981; }
+  .status-overdue { background: #f59e0b20; color: #f59e0b; }
+  .status-void { background: #9ca3af20; color: #9ca3af; }
+  .footer { margin-top: 40px; text-align: center; font-size: 11px; color: #999; }
+  .amount { text-align: right; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="company">2maXnet</div>
+      <div class="company-sub">Internet Service Provider</div>
+    </div>
+    <div>
+      <div class="invoice-title">INVOICE</div>
+      <div class="invoice-meta">
+        Invoice #: {{ invoice.id | string | truncate(8, False, '') }}<br>
+        Issued: {{ invoice.issued_at.strftime('%B %d, %Y') }}<br>
+        Due: {{ invoice.due_date.strftime('%B %d, %Y') }}<br>
+        Status: <span class="status status-{{ invoice.status.value }}">{{ invoice.status.value | upper }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="bill-to">
+    <h3>Bill To</h3>
+    <strong>{{ customer.full_name }}</strong><br>
+    {{ customer.email }}<br>
+    {{ customer.phone }}<br>
+    {% if customer.address %}{{ customer.address }}<br>{% endif %}
+    PPPoE Account: {{ customer.pppoe_username }}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th class="amount">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <strong>{{ plan.name }}</strong><br>
+          <span style="font-size: 12px; color: #666;">
+            {{ plan.download_mbps }} Mbps / {{ plan.upload_mbps }} Mbps — Monthly Service
+          </span>
+        </td>
+        <td class="amount">₱{{ "%.2f" | format(invoice.amount) }}</td>
+      </tr>
+      <tr class="total-row">
+        <td>Total Due</td>
+        <td class="amount">₱{{ "%.2f" | format(invoice.amount) }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  {% if payments %}
+  <h3>Payments Received</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Method</th>
+        <th>Reference</th>
+        <th class="amount">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in payments %}
+      <tr>
+        <td>{{ p.received_at.strftime('%B %d, %Y') }}</td>
+        <td>{{ p.method.value | capitalize }}</td>
+        <td>{{ p.reference_number or '-' }}</td>
+        <td class="amount">₱{{ "%.2f" | format(p.amount) }}</td>
+      </tr>
+      {% endfor %}
+      <tr class="total-row">
+        <td colspan="3">Total Paid</td>
+        <td class="amount">₱{{ "%.2f" | format(total_paid) }}</td>
+      </tr>
+      {% if balance > 0 %}
+      <tr>
+        <td colspan="3"><strong>Balance Remaining</strong></td>
+        <td class="amount"><strong>₱{{ "%.2f" | format(balance) }}</strong></td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <div class="footer">
+    <div class="divider"></div>
+    Thank you for choosing 2maXnet. Please pay before the due date to avoid service interruption.
+  </div>
+</body>
+</html>

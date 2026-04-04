@@ -3,6 +3,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import Response
 from sqlalchemy import and_, extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +27,7 @@ from app.schemas.billing import (
     RevenueSummary,
 )
 from app.services import billing as billing_service
+from app.services.pdf import generate_invoice_pdf
 
 router = APIRouter(prefix="/billing", tags=["billing"])
 
@@ -103,6 +105,32 @@ async def get_invoice(
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
     return _invoice_to_response(invoice)
+
+
+@router.get("/invoices/{invoice_id}/pdf")
+async def download_invoice_pdf(
+    invoice_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Invoice).where(Invoice.id == invoice_id))
+    invoice = result.scalar_one_or_none()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    customer = invoice.customer
+    plan = invoice.plan
+    payments = invoice.payments or []
+    total_paid = sum(p.amount for p in payments)
+
+    pdf_bytes = generate_invoice_pdf(invoice, customer, plan, payments, total_paid)
+
+    filename = f"invoice-{str(invoice.id)[:8]}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/invoices/generate", status_code=status.HTTP_200_OK)

@@ -83,3 +83,6 @@ export const recordPayment = (data: {
 
 export const getRevenueSummary = (params: { from_date: string; to_date: string }) =>
   client.get<RevenueSummary>('/billing/reports/summary', { params });
+
+export const downloadInvoicePdf = (id: string) =>
+  client.get(`/billing/invoices/${id}/pdf`, { responseType: 'blob' });

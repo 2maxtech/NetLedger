@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Table, Card, Typography, Select, Space, Button, message, DatePicker, Popconfirm } from 'antd';
-import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import StatusTag from '../../components/StatusTag';
-import { getInvoices, generateInvoices, updateInvoice } from '../../api/billing';
+import { getInvoices, generateInvoices, updateInvoice, downloadInvoicePdf } from '../../api/billing';
 import type { Invoice } from '../../api/billing';
 
 const Invoices = () => {
@@ -85,13 +85,34 @@ const Invoices = () => {
     {
       title: 'Actions',
       key: 'actions',
-      width: 80,
-      render: (_: unknown, r: Invoice) =>
-        r.status !== 'void' && r.status !== 'paid' ? (
-          <Popconfirm title="Void this invoice?" onConfirm={() => voidMut.mutate(r.id)}>
-            <Button type="link" size="small" danger>Void</Button>
-          </Popconfirm>
-        ) : null,
+      width: 130,
+      render: (_: unknown, r: Invoice) => (
+        <Space size="small">
+          <Button
+            type="link"
+            size="small"
+            icon={<DownloadOutlined />}
+            onClick={async () => {
+              try {
+                const res = await downloadInvoicePdf(r.id);
+                const url = window.URL.createObjectURL(new Blob([res.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `invoice-${r.id.slice(0, 8)}.pdf`;
+                link.click();
+                window.URL.revokeObjectURL(url);
+              } catch { message.error('Failed to download PDF'); }
+            }}
+          >
+            PDF
+          </Button>
+          {r.status !== 'void' && r.status !== 'paid' ? (
+            <Popconfirm title="Void this invoice?" onConfirm={() => voidMut.mutate(r.id)}>
+              <Button type="link" size="small" danger>Void</Button>
+            </Popconfirm>
+          ) : null}
+        </Space>
+      ),
     },
   ];
 
