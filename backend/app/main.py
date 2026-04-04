@@ -7,6 +7,7 @@ from app.api.admin.plans import router as plans_router
 from app.api.admin.billing import router as billing_router
 from app.api.admin.pppoe import router as pppoe_router
 from app.api.admin.network import router as network_router
+from app.api.admin.security import router as security_router
 from app.api.portal import router as portal_router
 from app.api.admin.users import router as users_router
 from app.api.auth import router as auth_router
@@ -32,6 +33,7 @@ app.include_router(network_router, prefix=settings.API_V1_PREFIX)
 app.include_router(billing_router, prefix=settings.API_V1_PREFIX)
 app.include_router(portal_router, prefix=settings.API_V1_PREFIX)
 app.include_router(ws_router, prefix=settings.API_V1_PREFIX)
+app.include_router(security_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/health")

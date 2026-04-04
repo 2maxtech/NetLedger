@@ -4,7 +4,7 @@ import type { MenuProps } from 'antd';
 import {
   DashboardOutlined, TeamOutlined, AppstoreOutlined, WifiOutlined,
   FileTextOutlined, DollarOutlined, UserOutlined, DesktopOutlined, FileSearchOutlined,
-  SafetyCertificateOutlined, ApiOutlined, GlobalOutlined,
+  SafetyCertificateOutlined, ApiOutlined, GlobalOutlined, AlertOutlined, StopOutlined,
 } from '@ant-design/icons';
 
 type MenuItem = Required<MenuProps>['items'][number];
@@ -22,6 +22,10 @@ const menuItems: MenuItem[] = [
     { key: '/firewall', icon: <SafetyCertificateOutlined />, label: 'Firewall' },
     { key: '/network', icon: <ApiOutlined />, label: 'Interfaces & Routing' },
     { key: '/dhcp-dns', icon: <GlobalOutlined />, label: 'DHCP & DNS' },
+  ]},
+  { key: 'security', icon: <AlertOutlined />, label: 'Security', children: [
+    { key: '/suricata', icon: <AlertOutlined />, label: 'Suricata IDS/IPS' },
+    { key: '/content-filter', icon: <StopOutlined />, label: 'Content Filter' },
   ]},
   { key: 'system', icon: <DesktopOutlined />, label: 'System', children: [
     { key: '/system/users', icon: <UserOutlined />, label: 'Staff Users' },
@@ -43,7 +47,7 @@ const SideMenu = () => {
       theme="dark"
       mode="inline"
       selectedKeys={[location.pathname]}
-      defaultOpenKeys={['billing', 'network', 'system']}
+      defaultOpenKeys={['billing', 'network', 'security', 'system']}
       items={menuItems}
       onClick={onClick}
       style={{ borderRight: 0 }}

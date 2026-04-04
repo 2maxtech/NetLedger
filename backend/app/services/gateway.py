@@ -105,3 +105,46 @@ async def add_dns_entry(domain: str, ip: str) -> dict:
 
 async def get_upstream_dns() -> list:
     return await _request("GET", "/agent/dhcp/dns/upstream")
+
+
+# --- Suricata IDS/IPS ---
+async def get_suricata_status() -> dict:
+    return await _request("GET", "/agent/security/suricata/status")
+
+async def get_suricata_stats() -> dict:
+    return await _request("GET", "/agent/security/suricata/stats")
+
+async def get_suricata_alerts(limit: int = 50) -> list:
+    return await _request("GET", f"/agent/security/suricata/alerts?limit={limit}")
+
+async def get_suricata_rules() -> list:
+    return await _request("GET", "/agent/security/suricata/rules")
+
+async def suricata_reload() -> dict:
+    return await _request("POST", "/agent/security/suricata/reload")
+
+async def suricata_start() -> dict:
+    return await _request("POST", "/agent/security/suricata/start")
+
+async def suricata_stop() -> dict:
+    return await _request("POST", "/agent/security/suricata/stop")
+
+# --- DNS Filtering ---
+async def get_blocked_domains() -> list:
+    return await _request("GET", "/agent/security/dns-filter/domains")
+
+async def add_blocked_domain(domain: str) -> dict:
+    return await _request("POST", "/agent/security/dns-filter/domain", json={"domain": domain})
+
+async def remove_blocked_domain(domain: str) -> dict:
+    return await _request("DELETE", "/agent/security/dns-filter/domain", json={"domain": domain})
+
+async def apply_dns_blocklist(domains: list) -> dict:
+    return await _request("POST", "/agent/security/dns-filter/apply", json={"domains": domains})
+
+# --- GeoIP ---
+async def get_blocked_countries() -> list:
+    return await _request("GET", "/agent/security/geoip/countries")
+
+async def apply_geoip_block(country_codes: list) -> dict:
+    return await _request("POST", "/agent/security/geoip/apply", json={"country_codes": country_codes})

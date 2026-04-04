@@ -20,6 +20,9 @@ const Firewall = lazy(() => import('./pages/network/Firewall'));
 const NetworkInterfaces = lazy(() => import('./pages/network/Interfaces'));
 const DhcpDns = lazy(() => import('./pages/network/DhcpDns'));
 
+const Suricata = lazy(() => import('./pages/security/Suricata'));
+const ContentFilter = lazy(() => import('./pages/security/ContentFilter'));
+
 const PortalLogin = lazy(() => import('./pages/portal/PortalLogin'));
 const PortalDashboard = lazy(() => import('./pages/portal/PortalDashboard'));
 const PortalInvoices = lazy(() => import('./pages/portal/PortalInvoices'));
@@ -71,6 +74,8 @@ export const router = createBrowserRouter([
       { path: 'firewall', element: wrap(Firewall) },
       { path: 'network', element: wrap(NetworkInterfaces) },
       { path: 'dhcp-dns', element: wrap(DhcpDns) },
+      { path: 'suricata', element: wrap(Suricata) },
+      { path: 'content-filter', element: wrap(ContentFilter) },
     ],
   },
 ]);
