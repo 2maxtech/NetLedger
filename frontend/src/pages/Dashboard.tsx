@@ -23,7 +23,7 @@ const Dashboard = () => {
   const { data } = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => getDashboard().then((r) => r.data),
-    refetchInterval: 30000,
+    refetchInterval: 5000,
   });
 
   const subs = data?.subscribers || { total: 0, active: 0, suspended: 0, disconnected: 0 };

@@ -1,0 +1,70 @@
+<h2>Admin Dashboard — First Build Scope</h2>
+<p class="subtitle">Select the pages to include in the first frontend build. Core pages are pre-selected.</p>
+
+<div class="options" data-multiselect>
+  <div class="option selected" data-choice="login" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content">
+      <h3>Login Page</h3>
+      <p>Staff authentication — required for everything else</p>
+    </div>
+  </div>
+  <div class="option selected" data-choice="dashboard" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content">
+      <h3>Dashboard (Home)</h3>
+      <p>System health, online customers, revenue overview, activity feed</p>
+    </div>
+  </div>
+  <div class="option selected" data-choice="customers" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content">
+      <h3>Customers</h3>
+      <p>Table with search/filter, detail page with sessions, usage, invoices, disconnect/reconnect/throttle actions</p>
+    </div>
+  </div>
+  <div class="option selected" data-choice="plans" onclick="toggleSelect(this)">
+    <div class="letter">4</div>
+    <div class="content">
+      <h3>Plans</h3>
+      <p>CRUD for service plans with speed tiers and pricing</p>
+    </div>
+  </div>
+  <div class="option" data-choice="pppoe" onclick="toggleSelect(this)">
+    <div class="letter">5</div>
+    <div class="content">
+      <h3>PPPoE Sessions</h3>
+      <p>Live active sessions table, kick sessions — ties directly to the gateway integration we just built</p>
+    </div>
+  </div>
+  <div class="option" data-choice="billing" onclick="toggleSelect(this)">
+    <div class="letter">6</div>
+    <div class="content">
+      <h3>Billing (Invoices + Payments)</h3>
+      <p>Invoice list, record payments, revenue reports — needs billing API endpoints first</p>
+    </div>
+  </div>
+  <div class="option" data-choice="users" onclick="toggleSelect(this)">
+    <div class="letter">7</div>
+    <div class="content">
+      <h3>Staff Users</h3>
+      <p>Manage admin/billing/technician accounts — API already exists</p>
+    </div>
+  </div>
+  <div class="option" data-choice="system" onclick="toggleSelect(this)">
+    <div class="letter">8</div>
+    <div class="content">
+      <h3>System Status</h3>
+      <p>Live CPU/RAM/disk, interface traffic — needs Gateway Agent stats</p>
+    </div>
+  </div>
+  <div class="option" data-choice="logs" onclick="toggleSelect(this)">
+    <div class="letter">9</div>
+    <div class="content">
+      <h3>Logs</h3>
+      <p>System log, auth log viewer</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top: 24px;">Pages 1-4 are pre-selected as the recommended minimum. Click to add/remove others. Let me know in the terminal which pages you want.</p>

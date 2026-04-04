@@ -1,0 +1,72 @@
+<h2>Admin Dashboard Layout</h2>
+<p class="subtitle">Which layout structure do you prefer?</p>
+
+<div class="split">
+  <div class="mockup" data-choice="a" onclick="toggleSelect(this)" style="cursor:pointer">
+    <div class="mockup-header">A — Fixed Sidebar</div>
+    <div class="mockup-body" style="padding:0;height:400px;display:flex;">
+      <div style="width:220px;background:#001529;color:#fff;padding:16px;flex-shrink:0;font-size:13px;">
+        <div style="padding:12px 0;font-size:16px;font-weight:bold;border-bottom:1px solid #ffffff22;margin-bottom:12px;">2maXnetBill</div>
+        <div style="padding:8px 12px;background:#1890ff;border-radius:6px;margin-bottom:4px;">Dashboard</div>
+        <div style="padding:8px 12px;opacity:0.7;margin-bottom:4px;">Customers</div>
+        <div style="padding:8px 12px;opacity:0.7;margin-bottom:4px;">Plans</div>
+        <div style="padding:8px 12px;opacity:0.7;margin-bottom:4px;">PPPoE Sessions</div>
+        <div style="padding:8px 12px;opacity:0.5;font-size:11px;margin-top:12px;text-transform:uppercase;letter-spacing:1px;">Billing</div>
+        <div style="padding:8px 12px;opacity:0.7;margin-bottom:4px;">Invoices</div>
+        <div style="padding:8px 12px;opacity:0.7;margin-bottom:4px;">Payments</div>
+        <div style="padding:8px 12px;opacity:0.5;font-size:11px;margin-top:12px;text-transform:uppercase;letter-spacing:1px;">System</div>
+        <div style="padding:8px 12px;opacity:0.7;margin-bottom:4px;">Staff Users</div>
+        <div style="padding:8px 12px;opacity:0.7;margin-bottom:4px;">System Status</div>
+        <div style="padding:8px 12px;opacity:0.7;">Logs</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;">
+        <div style="height:48px;background:#fff;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:13px;">
+          <span>Dashboard</span>
+          <span style="opacity:0.6;">admin@2maxnetbill.com</span>
+        </div>
+        <div style="flex:1;background:#f0f2f5;padding:16px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+            <div style="background:#fff;padding:12px;border-radius:6px;font-size:12px;"><div style="opacity:0.5;font-size:10px;">ONLINE</div><div style="font-size:20px;font-weight:bold;">42</div></div>
+            <div style="background:#fff;padding:12px;border-radius:6px;font-size:12px;"><div style="opacity:0.5;font-size:10px;">REVENUE</div><div style="font-size:20px;font-weight:bold;">₱125K</div></div>
+            <div style="background:#fff;padding:12px;border-radius:6px;font-size:12px;"><div style="opacity:0.5;font-size:10px;">CUSTOMERS</div><div style="font-size:20px;font-weight:bold;">156</div></div>
+          </div>
+          <div style="background:#fff;padding:12px;border-radius:6px;height:120px;display:flex;align-items:center;justify-content:center;opacity:0.3;">Traffic Chart</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup" data-choice="b" onclick="toggleSelect(this)" style="cursor:pointer">
+    <div class="mockup-header">B — Collapsible Sidebar</div>
+    <div class="mockup-body" style="padding:0;height:400px;display:flex;">
+      <div style="width:64px;background:#001529;color:#fff;padding:12px 8px;flex-shrink:0;font-size:11px;text-align:center;">
+        <div style="padding:8px 0;font-size:14px;font-weight:bold;border-bottom:1px solid #ffffff22;margin-bottom:12px;">2M</div>
+        <div style="padding:8px 4px;background:#1890ff;border-radius:6px;margin-bottom:6px;">📊</div>
+        <div style="padding:8px 4px;opacity:0.7;margin-bottom:6px;">👥</div>
+        <div style="padding:8px 4px;opacity:0.7;margin-bottom:6px;">📋</div>
+        <div style="padding:8px 4px;opacity:0.7;margin-bottom:6px;">🔗</div>
+        <div style="padding:8px 4px;opacity:0.7;margin-bottom:6px;">💰</div>
+        <div style="padding:8px 4px;opacity:0.7;margin-bottom:6px;">👤</div>
+        <div style="padding:8px 4px;opacity:0.7;margin-bottom:6px;">⚙️</div>
+        <div style="padding:8px 4px;opacity:0.7;">📜</div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;">
+        <div style="height:48px;background:#fff;border-bottom:1px solid #eee;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-size:13px;">
+          <div style="display:flex;align-items:center;gap:12px;"><span style="cursor:pointer;">☰</span> <span>Dashboard</span></div>
+          <span style="opacity:0.6;">admin@2maxnetbill.com</span>
+        </div>
+        <div style="flex:1;background:#f0f2f5;padding:16px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+            <div style="background:#fff;padding:12px;border-radius:6px;font-size:12px;"><div style="opacity:0.5;font-size:10px;">ONLINE</div><div style="font-size:20px;font-weight:bold;">42</div></div>
+            <div style="background:#fff;padding:12px;border-radius:6px;font-size:12px;"><div style="opacity:0.5;font-size:10px;">REVENUE</div><div style="font-size:20px;font-weight:bold;">₱125K</div></div>
+            <div style="background:#fff;padding:12px;border-radius:6px;font-size:12px;"><div style="opacity:0.5;font-size:10px;">CUSTOMERS</div><div style="font-size:20px;font-weight:bold;">156</div></div>
+            <div style="background:#fff;padding:12px;border-radius:6px;font-size:12px;"><div style="opacity:0.5;font-size:10px;">OVERDUE</div><div style="font-size:20px;font-weight:bold;color:#ff4d4f;">8</div></div>
+          </div>
+          <div style="background:#fff;padding:12px;border-radius:6px;height:140px;display:flex;align-items:center;justify-content:center;opacity:0.3;">Traffic Chart — more space with collapsed sidebar</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:16px;">A: Always visible navigation labels. B: Icon-only by default, expands on hover/click — gives more content space. Both use Ant Design's Sider component.</p>
