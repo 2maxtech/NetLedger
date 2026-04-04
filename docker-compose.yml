@@ -41,5 +41,33 @@ services:
     extra_hosts:
       - "gateway:192.168.40.41"
 
+  celery-worker:
+    build:
+      context: ./backend
+    command: celery -A app.celery_app worker --loglevel=info --concurrency=2
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+      - redis
+    extra_hosts:
+      - "gateway:192.168.40.41"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://netbill:netbill@db:5432/netbill
+      REDIS_URL: redis://redis:6379/0
+
+  celery-beat:
+    build:
+      context: ./backend
+    command: celery -A app.celery_app beat --loglevel=info -s /tmp/celerybeat-schedule
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: postgresql+asyncpg://netbill:netbill@db:5432/netbill
+      REDIS_URL: redis://redis:6379/0
+
 volumes:
   pgdata:
