@@ -9,6 +9,8 @@ from app.api.admin.network import router as network_router
 from app.api.portal import router as portal_router
 from app.api.admin.users import router as users_router
 from app.api.auth import router as auth_router
+from app.api.admin.routers import router as routers_router
+from app.api.admin.areas import router as areas_router
 from app.core.config import settings
 
 app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_PREFIX}/openapi.json")
@@ -27,6 +29,8 @@ app.include_router(customers_router, prefix=settings.API_V1_PREFIX)
 app.include_router(users_router, prefix=settings.API_V1_PREFIX)
 app.include_router(billing_router, prefix=settings.API_V1_PREFIX)
 app.include_router(network_router, prefix=settings.API_V1_PREFIX)
+app.include_router(routers_router, prefix=settings.API_V1_PREFIX)
+app.include_router(areas_router, prefix=settings.API_V1_PREFIX)
 app.include_router(portal_router, prefix=settings.API_V1_PREFIX)
 
 
