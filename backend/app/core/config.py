@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "2maXnetBill"
+    PROJECT_NAME: str = "NetLedger"
     API_V1_PREFIX: str = "/api/v1"
 
     DATABASE_URL: str = "postgresql+asyncpg://netbill:netbill@db:5432/netbill"
@@ -13,11 +13,10 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     ALGORITHM: str = "HS256"
 
-    # Kerio Control
-    KERIO_URL: str = "https://192.168.10.1:4081"
-    KERIO_ADMIN_USER: str = "admin"
-    KERIO_ADMIN_PASSWORD: str = ""
-    KERIO_DOMAIN_ID: str = "local"
+    # MikroTik RouterOS
+    MIKROTIK_URL: str = "https://192.168.40.50"
+    MIKROTIK_USER: str = "admin"
+    MIKROTIK_PASSWORD: str = ""
 
     BILLING_GENERATE_DAY: int = 1
     BILLING_DUE_DAY: int = 15
@@ -33,7 +32,7 @@ class Settings(BaseSettings):
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
     SMTP_PASSWORD: str = ""
-    SMTP_FROM: str = "noreply@2maxnet.com"
+    SMTP_FROM: str = "noreply@netledger.io"
 
     class Config:
         env_file = ".env"

@@ -29,10 +29,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://netbill:netbill@db:5432/netbill
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: dev-secret-key-not-for-production
-      KERIO_URL: https://192.168.10.1
-      KERIO_ADMIN_USER: admin
-      KERIO_ADMIN_PASSWORD: SeafoodCity12#
-      KERIO_DOMAIN_ID: local
+      MIKROTIK_URL: https://192.168.40.50
+      MIKROTIK_USER: admin
+      MIKROTIK_PASSWORD: ""
 
   frontend:
     build:
@@ -55,10 +54,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://netbill:netbill@db:5432/netbill
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: dev-secret-key-not-for-production
-      KERIO_URL: https://192.168.10.1
-      KERIO_ADMIN_USER: admin
-      KERIO_ADMIN_PASSWORD: SeafoodCity12#
-      KERIO_DOMAIN_ID: local
+      MIKROTIK_URL: https://192.168.40.50
+      MIKROTIK_USER: admin
+      MIKROTIK_PASSWORD: ""
 
   celery-beat:
     build:
