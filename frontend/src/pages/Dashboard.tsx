@@ -1,11 +1,9 @@
-import { Row, Col, Card, Typography, Progress, Alert } from 'antd';
+import { Row, Col, Card, Typography } from 'antd';
 import { TeamOutlined, WifiOutlined, DollarOutlined, WarningOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import ReactECharts from 'echarts-for-react';
 import StatCard from '../components/StatCard';
 import { getCustomers } from '../api/customers';
-import { getSessions } from '../api/pppoe';
-import { getSystemStats } from '../api/gateway';
 
 const Dashboard = () => {
   const { data: customersData } = useQuery({
@@ -13,21 +11,7 @@ const Dashboard = () => {
     queryFn: () => getCustomers({ page: 1, page_size: 1 }),
   });
 
-  const { data: sessionsData } = useQuery({
-    queryKey: ['pppoe-sessions'],
-    queryFn: getSessions,
-    refetchInterval: 10000,
-  });
-
-  const { data: statsData, error: statsError } = useQuery({
-    queryKey: ['system-stats'],
-    queryFn: getSystemStats,
-    refetchInterval: 5000,
-  });
-
   const totalCustomers = customersData?.data?.total ?? 0;
-  const onlineSessions = sessionsData?.data?.length ?? 0;
-  const stats = statsData?.data;
 
   const trafficChartOption = {
     tooltip: { trigger: 'axis' },
@@ -39,14 +23,12 @@ const Dashboard = () => {
     ],
   };
 
-  const progressColor = (pct: number) => (pct < 60 ? '#10b981' : pct < 80 ? '#f59e0b' : '#ef4444');
-
   return (
     <div>
       <Typography.Title level={4}>Dashboard</Typography.Title>
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
-          <StatCard title="Online Customers" value={onlineSessions} prefix={<WifiOutlined />} valueStyle={{ color: '#10b981' }} />
+          <StatCard title="Online Customers" value="--" prefix={<WifiOutlined />} valueStyle={{ color: '#10b981' }} />
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <StatCard title="Total Customers" value={totalCustomers} prefix={<TeamOutlined />} />
@@ -67,26 +49,7 @@ const Dashboard = () => {
         </Col>
         <Col xs={24} lg={8}>
           <Card title="System Health">
-            {statsError ? (
-              <Alert type="error" message="Gateway unreachable" showIcon />
-            ) : stats ? (
-              <div>
-                <div style={{ marginBottom: 16 }}>
-                  <Typography.Text>CPU</Typography.Text>
-                  <Progress percent={Math.round(stats.cpu_percent)} strokeColor={progressColor(stats.cpu_percent)} />
-                </div>
-                <div style={{ marginBottom: 16 }}>
-                  <Typography.Text>Memory</Typography.Text>
-                  <Progress percent={Math.round(stats.memory_percent)} strokeColor={progressColor(stats.memory_percent)} />
-                </div>
-                <div>
-                  <Typography.Text>Disk</Typography.Text>
-                  <Progress percent={Math.round(stats.disk_percent)} strokeColor={progressColor(stats.disk_percent)} />
-                </div>
-              </div>
-            ) : (
-              <Typography.Text type="secondary">Loading...</Typography.Text>
-            )}
+            <Typography.Text type="secondary">Kerio Control integration pending</Typography.Text>
           </Card>
         </Col>
       </Row>

@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -5,14 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.customer import Customer, CustomerStatus
 from app.models.disconnect_log import DisconnectAction, DisconnectLog, DisconnectReason
 from app.models.user import User
 from app.schemas.customer import CustomerCreate, CustomerListResponse, CustomerResponse, CustomerUpdate
-from app.services import gateway
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/customers", tags=["customers"])
 
@@ -132,10 +133,9 @@ async def disconnect_customer(
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    try:
-        response = await gateway.disconnect_customer(str(customer.id), customer.pppoe_username)
-    except Exception:
-        response = {"detail": "Gateway unreachable, session may still be active"}
+    # Replace gateway calls with placeholder - will be replaced by Kerio adapter
+    response = {"detail": "Kerio integration pending"}
+    logger.info(f"Customer {customer.id} status changed to disconnected")
 
     customer.status = CustomerStatus.disconnected
     log = DisconnectLog(
@@ -161,10 +161,9 @@ async def reconnect_customer(
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    try:
-        response = await gateway.reconnect_customer(str(customer.id), customer.pppoe_username)
-    except Exception:
-        response = {"detail": "Gateway unreachable"}
+    # Replace gateway calls with placeholder - will be replaced by Kerio adapter
+    response = {"detail": "Kerio integration pending"}
+    logger.info(f"Customer {customer.id} status changed to active")
 
     customer.status = CustomerStatus.active
     log = DisconnectLog(
@@ -190,13 +189,9 @@ async def throttle_customer(
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    try:
-        response = await gateway.throttle_customer(
-            str(customer.id), customer.pppoe_username,
-            settings.THROTTLE_DOWNLOAD_MBPS, settings.THROTTLE_UPLOAD_KBPS,
-        )
-    except Exception:
-        response = {"detail": "Gateway unreachable"}
+    # Replace gateway calls with placeholder - will be replaced by Kerio adapter
+    response = {"detail": "Kerio integration pending"}
+    logger.info(f"Customer {customer.id} status changed to suspended")
 
     customer.status = CustomerStatus.suspended
     log = DisconnectLog(

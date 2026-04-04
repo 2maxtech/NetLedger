@@ -9,19 +9,11 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const CustomerList = lazy(() => import('./pages/customers/CustomerList'));
 const CustomerDetail = lazy(() => import('./pages/customers/CustomerDetail'));
 const Plans = lazy(() => import('./pages/Plans'));
-const PPPoESessions = lazy(() => import('./pages/PPPoESessions'));
 const Invoices = lazy(() => import('./pages/billing/Invoices'));
 const Payments = lazy(() => import('./pages/billing/Payments'));
 const Users = lazy(() => import('./pages/system/Users'));
 const SystemStatus = lazy(() => import('./pages/system/SystemStatus'));
 const Logs = lazy(() => import('./pages/system/Logs'));
-
-const Firewall = lazy(() => import('./pages/network/Firewall'));
-const NetworkInterfaces = lazy(() => import('./pages/network/Interfaces'));
-const DhcpDns = lazy(() => import('./pages/network/DhcpDns'));
-
-const Suricata = lazy(() => import('./pages/security/Suricata'));
-const ContentFilter = lazy(() => import('./pages/security/ContentFilter'));
 
 const PortalLogin = lazy(() => import('./pages/portal/PortalLogin'));
 const PortalDashboard = lazy(() => import('./pages/portal/PortalDashboard'));
@@ -65,17 +57,11 @@ export const router = createBrowserRouter([
       { path: 'customers', element: wrap(CustomerList) },
       { path: 'customers/:id', element: wrap(CustomerDetail) },
       { path: 'plans', element: wrap(Plans) },
-      { path: 'pppoe', element: wrap(PPPoESessions) },
       { path: 'billing/invoices', element: wrap(Invoices) },
       { path: 'billing/payments', element: wrap(Payments) },
       { path: 'system/users', element: wrap(Users) },
       { path: 'system/status', element: wrap(SystemStatus) },
       { path: 'system/logs', element: wrap(Logs) },
-      { path: 'firewall', element: wrap(Firewall) },
-      { path: 'network', element: wrap(NetworkInterfaces) },
-      { path: 'dhcp-dns', element: wrap(DhcpDns) },
-      { path: 'suricata', element: wrap(Suricata) },
-      { path: 'content-filter', element: wrap(ContentFilter) },
     ],
   },
 ]);

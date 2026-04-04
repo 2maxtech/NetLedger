@@ -140,11 +140,8 @@ async def record_payment(
             )
             if not other_overdue.scalars().first():
                 if not skip_gateway:
-                    from app.services import gateway
-                    try:
-                        await gateway.reconnect_customer(str(customer.id), customer.pppoe_username)
-                    except Exception as e:
-                        logger.error(f"Gateway reconnect failed for {customer.id}: {e}")
+                    logger.info(f"Kerio integration pending: reconnect {customer.id}")
+                    # Kerio adapter will be wired here
 
                 customer.status = CustomerStatus.active
                 log = DisconnectLog(
@@ -203,16 +200,8 @@ async def process_graduated_disconnect(db: AsyncSession, skip_gateway: bool = Fa
                 and customer.status == CustomerStatus.active
             ):
                 if not skip_gateway:
-                    from app.services import gateway
-                    try:
-                        await gateway.throttle_customer(
-                            str(customer.id),
-                            customer.pppoe_username,
-                            settings.THROTTLE_DOWNLOAD_MBPS,
-                            settings.THROTTLE_UPLOAD_KBPS,
-                        )
-                    except Exception as e:
-                        logger.error(f"Gateway throttle failed for {customer.id}: {e}")
+                    logger.info(f"Kerio integration pending: throttle {customer.id}")
+                    # Kerio adapter will be wired here
 
                 customer.status = CustomerStatus.suspended
                 db.add(DisconnectLog(
@@ -230,11 +219,8 @@ async def process_graduated_disconnect(db: AsyncSession, skip_gateway: bool = Fa
                 and customer.status == CustomerStatus.suspended
             ):
                 if not skip_gateway:
-                    from app.services import gateway
-                    try:
-                        await gateway.disconnect_customer(str(customer.id), customer.pppoe_username)
-                    except Exception as e:
-                        logger.error(f"Gateway disconnect failed for {customer.id}: {e}")
+                    logger.info(f"Kerio integration pending: disconnect {customer.id}")
+                    # Kerio adapter will be wired here
 
                 customer.status = CustomerStatus.disconnected
                 db.add(DisconnectLog(
