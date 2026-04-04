@@ -2,7 +2,7 @@ import { Tag } from 'antd';
 
 const statusColors: Record<string, string> = {
   active: '#10b981', online: '#10b981', paid: '#10b981', sent: '#10b981',
-  suspended: '#f59e0b', overdue: '#f59e0b', pending: '#0d9488',
+  suspended: '#f59e0b', overdue: '#f59e0b', pending: '#e8700a',
   disconnected: '#ef4444', failed: '#ef4444',
   terminated: '#9ca3af', void: '#9ca3af',
 };

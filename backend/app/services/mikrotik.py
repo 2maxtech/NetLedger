@@ -159,6 +159,39 @@ class MikroTikClient:
         await self._request("DELETE", f"ppp/secret/{secret_id}")
         logger.info("Deleted PPP secret %s", secret_id)
 
+    # --- PPP Profiles (bandwidth via rate-limit) ---
+
+    async def get_profiles(self) -> list[dict]:
+        """Return all PPP profiles."""
+        resp = await self._request("GET", "ppp/profile")
+        return resp.json()
+
+    async def ensure_profile(self, name: str, rate_limit: str) -> str:
+        """Ensure a PPP profile exists with the given rate-limit. Returns the profile name.
+        rate_limit format: 'upload/download' e.g. '5M/10M' (MikroTik order: rx/tx from server perspective).
+        """
+        profiles = await self.get_profiles()
+        for p in profiles:
+            if p.get("name") == name:
+                # Update rate-limit if different
+                if p.get("rate-limit", "") != rate_limit:
+                    await self._request("PATCH", f"ppp/profile/{p['.id']}", json={"rate-limit": rate_limit})
+                    logger.info("Updated profile '%s' rate-limit to %s", name, rate_limit)
+                return name
+
+        # Create new profile inheriting from default
+        default = next((p for p in profiles if p.get("name") == "default"), {})
+        payload = {
+            "name": name,
+            "local-address": default.get("local-address", ""),
+            "remote-address": default.get("remote-address", ""),
+            "dns-server": default.get("dns-server", "8.8.8.8"),
+            "rate-limit": rate_limit,
+        }
+        await self._request("PUT", "ppp/profile", json=payload)
+        logger.info("Created profile '%s' with rate-limit %s", name, rate_limit)
+        return name
+
     # --- Simple Queues ---
 
     async def get_queues(self) -> list[dict]:

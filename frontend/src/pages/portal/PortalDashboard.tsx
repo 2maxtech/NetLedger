@@ -35,8 +35,8 @@ const PortalDashboard = () => {
     <div style={{ maxWidth: 1000, margin: '0 auto', padding: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <Typography.Title level={3} style={{ margin: 0, color: '#0d9488' }}>
-            <WifiOutlined /> 2maXnet Portal
+          <Typography.Title level={3} style={{ margin: 0, color: '#e8700a' }}>
+            <WifiOutlined /> NetLedger Portal
           </Typography.Title>
           <Typography.Text type="secondary">Welcome, {customer?.full_name}</Typography.Text>
         </div>

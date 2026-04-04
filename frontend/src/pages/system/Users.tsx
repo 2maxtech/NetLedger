@@ -6,7 +6,7 @@ import { getUsers, createUser, updateUser, deleteUser, type StaffUser } from '..
 import { useAuth } from '../../hooks/useAuth';
 import dayjs from 'dayjs';
 
-const roleColors: Record<string, string> = { admin: '#0d9488', billing: '#f59e0b', technician: '#64748b' };
+const roleColors: Record<string, string> = { admin: '#e8700a', billing: '#f59e0b', technician: '#64748b' };
 
 const Users = () => {
   const { user: currentUser } = useAuth();

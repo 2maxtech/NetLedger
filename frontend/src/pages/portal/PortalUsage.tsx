@@ -50,7 +50,7 @@ const PortalUsage = () => {
       <Space style={{ marginBottom: 16 }}>
         <Link to="/portal"><ArrowLeftOutlined /> Back to Dashboard</Link>
       </Space>
-      <Typography.Title level={4}><WifiOutlined style={{ color: '#0d9488' }} /> My Usage</Typography.Title>
+      <Typography.Title level={4}><WifiOutlined style={{ color: '#e8700a' }} /> My Usage</Typography.Title>
 
       <Card title="Bandwidth Usage" extra={
         <Select value={days} onChange={setDays} style={{ width: 120 }}>

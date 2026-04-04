@@ -4,7 +4,7 @@ import { Layout, Button, Dropdown, Space, Avatar } from 'antd';
 import { MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined } from '@ant-design/icons';
 import SideMenu from './SideMenu';
 import { useAuth } from '../../hooks/useAuth';
-import logo from '../../assets/logo.png';
+import logoIcon from '../../assets/logo.png';
 
 const { Header, Sider, Content } = Layout;
 
@@ -28,7 +28,7 @@ const AppLayout: React.FC = () => {
         width={220}
         collapsedWidth={64}
         style={{
-          background: '#0f172a',
+          background: '#1c1306',
           overflow: 'auto',
           height: '100vh',
           position: 'fixed',
@@ -42,20 +42,34 @@ const AppLayout: React.FC = () => {
           height: 64,
           display: 'flex',
           alignItems: 'center',
-          justifyContent: collapsed ? 'center' : 'flex-start',
-          padding: collapsed ? '0' : '0 20px',
+          justifyContent: 'center',
+          gap: 8,
           borderBottom: '1px solid rgba(255,255,255,0.06)',
+          padding: collapsed ? 8 : '8px 16px',
+          transition: 'all 0.2s',
+          overflow: 'hidden',
         }}>
           <img
-            src={logo}
-            alt="2mX"
+            src={logoIcon}
+            alt="NetLedger"
             style={{
-              height: 32,
+              height: collapsed ? 36 : 32,
               objectFit: 'contain',
               transition: 'all 0.2s',
-              maxWidth: collapsed ? 40 : 140,
             }}
           />
+          {!collapsed && (
+            <span style={{
+              color: '#e2e8f0',
+              fontSize: 18,
+              fontWeight: 700,
+              letterSpacing: '-0.5px',
+              whiteSpace: 'nowrap',
+              fontFamily: "'Inter', sans-serif",
+            }}>
+              NetLedger
+            </span>
+          )}
         </div>
         <SideMenu />
       </Sider>
@@ -82,7 +96,7 @@ const AppLayout: React.FC = () => {
             <Space style={{ cursor: 'pointer', color: '#475569' }}>
               <Avatar
                 size={32}
-                style={{ background: 'rgba(13,148,136,0.12)', color: '#0d9488', fontSize: 13, fontWeight: 600 }}
+                style={{ background: 'rgba(232,112,10,0.12)', color: '#e8700a', fontSize: 13, fontWeight: 600 }}
               >
                 {user?.username?.[0]?.toUpperCase() ?? 'U'}
               </Avatar>

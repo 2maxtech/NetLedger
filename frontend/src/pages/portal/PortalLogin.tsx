@@ -29,7 +29,7 @@ const PortalLogin = () => {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
+      background: 'linear-gradient(135deg, #1c1306 0%, #3d2a0a 50%, #1c1306 100%)',
     }}>
       <Card
         style={{
@@ -42,7 +42,7 @@ const PortalLogin = () => {
         styles={{ body: { padding: '40px 32px' } }}
       >
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <img src={logo} alt="2mX" style={{ height: 48, marginBottom: 12, objectFit: 'contain' }} />
+          <img src={logo} alt="NetLedger" style={{ height: 48, marginBottom: 12, objectFit: 'contain' }} />
           <Typography.Title level={4} style={{ margin: '0 0 4px' }}>Customer Portal</Typography.Title>
           <Typography.Text type="secondary">Sign in to your account</Typography.Text>
         </div>

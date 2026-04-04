@@ -55,7 +55,7 @@ const PortalInvoices = () => {
       <Space style={{ marginBottom: 16 }}>
         <Link to="/portal"><ArrowLeftOutlined /> Back to Dashboard</Link>
       </Space>
-      <Typography.Title level={4}><WifiOutlined style={{ color: '#0d9488' }} /> My Invoices</Typography.Title>
+      <Typography.Title level={4}><WifiOutlined style={{ color: '#e8700a' }} /> My Invoices</Typography.Title>
       <Card>
         <Table
           columns={columns}

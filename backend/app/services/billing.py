@@ -144,9 +144,11 @@ async def record_payment(
                         from app.services.mikrotik import mikrotik
                         try:
                             await mikrotik.enable_secret(customer.mikrotik_secret_id)
-                            if customer.mikrotik_queue_id and customer.plan:
-                                max_limit = f"{customer.plan.download_mbps}M/{customer.plan.upload_mbps}M"
-                                await mikrotik.update_queue(customer.mikrotik_queue_id, max_limit)
+                            if customer.plan:
+                                profile_name = f"{customer.plan.download_mbps}M-{customer.plan.upload_mbps}M"
+                                rate_limit = f"{customer.plan.upload_mbps}M/{customer.plan.download_mbps}M"
+                                await mikrotik.ensure_profile(profile_name, rate_limit)
+                                await mikrotik.update_secret(customer.mikrotik_secret_id, {"profile": profile_name})
                         except Exception as e:
                             logger.error(f"MikroTik enable failed for {customer.id}: {e}")
                     else:
@@ -209,15 +211,17 @@ async def process_graduated_disconnect(db: AsyncSession, skip_network: bool = Fa
                 and customer.status == CustomerStatus.active
             ):
                 if not skip_network:
-                    if customer.mikrotik_queue_id:
+                    if customer.mikrotik_secret_id:
                         from app.services.mikrotik import mikrotik
                         try:
-                            throttle_limit = f"{settings.THROTTLE_DOWNLOAD_MBPS}M/{settings.THROTTLE_UPLOAD_KBPS}k"
-                            await mikrotik.update_queue(customer.mikrotik_queue_id, throttle_limit)
+                            throttle_name = f"{settings.THROTTLE_DOWNLOAD_MBPS}M-throttle"
+                            throttle_rate = f"{settings.THROTTLE_UPLOAD_KBPS}k/{settings.THROTTLE_DOWNLOAD_MBPS}M"
+                            await mikrotik.ensure_profile(throttle_name, throttle_rate)
+                            await mikrotik.update_secret(customer.mikrotik_secret_id, {"profile": throttle_name})
                         except Exception as e:
                             logger.error(f"MikroTik throttle failed for {customer.id}: {e}")
                     else:
-                        logger.warning(f"Customer {customer.id} has no mikrotik_queue_id, skipping")
+                        logger.warning(f"Customer {customer.id} has no mikrotik_secret_id, skipping")
 
                 customer.status = CustomerStatus.suspended
                 db.add(DisconnectLog(

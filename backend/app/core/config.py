@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
 
     # MikroTik RouterOS
-    MIKROTIK_URL: str = "https://192.168.40.50"
+    MIKROTIK_URL: str = "http://192.168.40.30"
     MIKROTIK_USER: str = "admin"
     MIKROTIK_PASSWORD: str = ""
 
