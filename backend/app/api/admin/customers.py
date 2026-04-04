@@ -259,3 +259,48 @@ async def throttle_customer(
     db.add(log)
     await db.flush()
     return {"status": "throttled", "gateway_response": response}
+
+
+@router.post("/{customer_id}/change-plan", status_code=200)
+async def change_plan(
+    customer_id: uuid.UUID,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Change a customer's plan with instant MikroTik speed update."""
+    result = await db.execute(select(Customer).where(Customer.id == customer_id))
+    customer = result.scalar_one_or_none()
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    new_plan_id = body.get("plan_id")
+    if not new_plan_id:
+        raise HTTPException(status_code=400, detail="plan_id required")
+
+    from app.models.plan import Plan
+    plan_result = await db.execute(select(Plan).where(Plan.id == new_plan_id))
+    new_plan = plan_result.scalar_one_or_none()
+    if not new_plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    old_plan_id = customer.plan_id
+    customer.plan_id = new_plan.id
+    await db.flush()
+    await db.refresh(customer)
+
+    # Update MikroTik profile
+    mt_result = {"detail": "No MikroTik secret linked"}
+    if customer.mikrotik_secret_id:
+        try:
+            client, _ = await get_client_for_customer(db, customer)
+            if client:
+                profile_name = f"{new_plan.download_mbps}M-{new_plan.upload_mbps}M"
+                rate_limit = f"{new_plan.upload_mbps}M/{new_plan.download_mbps}M"
+                await client.ensure_profile(profile_name, rate_limit)
+                await client.update_secret(customer.mikrotik_secret_id, {"profile": profile_name})
+                mt_result = {"detail": f"Profile changed to {profile_name}"}
+        except Exception as e:
+            mt_result = {"detail": f"MikroTik error: {e}"}
+
+    return {"status": "plan_changed", "new_plan": new_plan.name, "mikrotik": mt_result}

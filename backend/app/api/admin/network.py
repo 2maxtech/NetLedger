@@ -1,9 +1,12 @@
+import ipaddress
 import logging
 import re
+import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends
+import httpx
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import and_, extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,7 +17,7 @@ from app.models.invoice import Invoice, InvoiceStatus
 from app.models.payment import Payment
 from app.models.plan import Plan
 from app.models.user import User
-from app.services.mikrotik import mikrotik
+from app.services.mikrotik import get_mikrotik_client, mikrotik
 
 logger = logging.getLogger(__name__)
 
@@ -372,3 +375,87 @@ async def import_from_mikrotik(
         "total_secrets_on_mikrotik": len(mt_secrets),
         "profiles_with_rates": len(profile_rates),
     }
+
+
+@router.post("/scan")
+async def scan_network(
+    body: dict,
+    current_user: User = Depends(require_role("admin")),
+):
+    """Scan a subnet for MikroTik devices."""
+    import asyncio
+    subnet = body.get("subnet", "192.168.40.0/24")
+    username = body.get("username", "admin")
+    password = body.get("password", "")
+
+    # Parse subnet to get IP range
+    network = ipaddress.IPv4Network(subnet, strict=False)
+    hosts = list(network.hosts())
+
+    found = []
+
+    async def check_host(ip):
+        ip_str = str(ip)
+        try:
+            async with httpx.AsyncClient(verify=False, timeout=2.0, auth=(username, password)) as client:
+                resp = await client.get(f"http://{ip_str}/rest/system/identity")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    # Try to get version too
+                    try:
+                        res_resp = await client.get(f"http://{ip_str}/rest/system/resource")
+                        version = res_resp.json().get("version", "") if res_resp.status_code == 200 else ""
+                    except Exception:
+                        version = ""
+                    return {"ip": ip_str, "identity": data.get("name", ""), "version": version, "auth_ok": True}
+                elif resp.status_code == 401:
+                    return {"ip": ip_str, "identity": "", "version": "", "auth_ok": False}
+        except Exception:
+            pass
+        return None
+
+    # Scan in batches of 20
+    for i in range(0, len(hosts), 20):
+        batch = hosts[i:i+20]
+        results = await asyncio.gather(*[check_host(ip) for ip in batch])
+        found.extend([r for r in results if r is not None])
+
+    return {"found": found, "scanned": len(hosts), "subnet": subnet}
+
+
+@router.get("/hotspot/users")
+async def get_hotspot_users(
+    router_id: uuid.UUID = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.models.router import Router
+    result = await db.execute(select(Router).where(Router.id == router_id))
+    r = result.scalar_one_or_none()
+    if not r:
+        return {"users": [], "error": "Router not found"}
+    client = get_mikrotik_client(str(r.id), r.url, r.username, r.password)
+    try:
+        resp = await client._request("GET", "ip/hotspot/user")
+        return {"users": resp.json(), "total": len(resp.json())}
+    except Exception as e:
+        return {"users": [], "total": 0, "error": str(e)}
+
+
+@router.get("/hotspot/sessions")
+async def get_hotspot_sessions(
+    router_id: uuid.UUID = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.models.router import Router
+    result = await db.execute(select(Router).where(Router.id == router_id))
+    r = result.scalar_one_or_none()
+    if not r:
+        return {"sessions": [], "error": "Router not found"}
+    client = get_mikrotik_client(str(r.id), r.url, r.username, r.password)
+    try:
+        resp = await client._request("GET", "ip/hotspot/active")
+        return {"sessions": resp.json(), "total": len(resp.json())}
+    except Exception as e:
+        return {"sessions": [], "total": 0, "error": str(e)}
