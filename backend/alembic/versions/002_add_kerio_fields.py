@@ -8,7 +8,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = '002_kerio'
-down_revision = None  # No prior migrations exist in versions/
+down_revision = 'ee5ce3a16489'
 branch_labels = None
 depends_on = None
 
