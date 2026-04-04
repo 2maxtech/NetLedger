@@ -20,6 +20,8 @@ class CustomerCreate(BaseModel):
     mac_address: str | None = None
     router_id: uuid.UUID | None = None
     area_id: uuid.UUID | None = None
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class CustomerUpdate(BaseModel):
@@ -36,6 +38,8 @@ class CustomerUpdate(BaseModel):
     mac_address: str | None = None
     router_id: uuid.UUID | None = None
     area_id: uuid.UUID | None = None
+    latitude: float | None = None
+    longitude: float | None = None
 
 
 class CustomerResponse(BaseModel):
@@ -54,6 +58,8 @@ class CustomerResponse(BaseModel):
     mac_address: str | None = None
     router_id: uuid.UUID | None = None
     area_id: uuid.UUID | None = None
+    latitude: float | None = None
+    longitude: float | None = None
 
     model_config = {"from_attributes": True}
 

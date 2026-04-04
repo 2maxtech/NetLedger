@@ -19,6 +19,8 @@ class RouterUpdate(BaseModel):
     password: str | None = None
     location: str | None = None
     is_active: bool | None = None
+    maintenance_mode: bool | None = None
+    maintenance_message: str | None = None
 
 
 class RouterResponse(BaseModel):
@@ -29,6 +31,8 @@ class RouterResponse(BaseModel):
     location: str | None
     is_active: bool
     created_at: datetime
+    maintenance_mode: bool = False
+    maintenance_message: str | None = None
 
     model_config = {"from_attributes": True}
 

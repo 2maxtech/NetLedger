@@ -11,6 +11,9 @@ class PlanCreate(BaseModel):
     upload_mbps: int
     monthly_price: Decimal
     description: str | None = None
+    data_cap_gb: int | None = None
+    fup_download_mbps: int | None = None
+    fup_upload_mbps: int | None = None
 
 
 class PlanUpdate(BaseModel):
@@ -20,6 +23,9 @@ class PlanUpdate(BaseModel):
     monthly_price: Decimal | None = None
     description: str | None = None
     is_active: bool | None = None
+    data_cap_gb: int | None = None
+    fup_download_mbps: int | None = None
+    fup_upload_mbps: int | None = None
 
 
 class PlanResponse(BaseModel):
@@ -31,5 +37,8 @@ class PlanResponse(BaseModel):
     description: str | None
     is_active: bool
     created_at: datetime
+    data_cap_gb: int | None = None
+    fup_download_mbps: int | None = None
+    fup_upload_mbps: int | None = None
 
     model_config = {"from_attributes": True}
