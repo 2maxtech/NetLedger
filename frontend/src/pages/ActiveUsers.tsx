@@ -22,7 +22,6 @@ const ActiveUsers = () => {
 
   const hosts = data?.hosts || [];
   const authenticatedHosts = hosts.filter((h) => h.user?.name);
-  const unauthenticatedHosts = hosts.filter((h) => !h.user?.name);
 
   const columns = [
     {

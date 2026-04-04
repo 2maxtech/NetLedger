@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Layout, Button, Dropdown, Space, Avatar } from 'antd';
-import { MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined, LogoutOutlined } from '@ant-design/icons';
+import { MenuFoldOutlined, MenuUnfoldOutlined, LogoutOutlined } from '@ant-design/icons';
 import SideMenu from './SideMenu';
 import { useAuth } from '../../hooks/useAuth';
 import logo from '../../assets/logo.png';
