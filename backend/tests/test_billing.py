@@ -272,3 +272,118 @@ async def test_graduated_disconnect_idempotent(db_session: AsyncSession, custome
     result = await process_graduated_disconnect(db_session, skip_gateway=True)
     assert result["throttled"] == 0
     assert result["disconnected"] == 0
+
+
+# --- API integration tests ---
+
+@pytest_asyncio.fixture
+async def plan_and_customer(client, auth_headers):
+    """Create a plan and customer via API, return their IDs."""
+    plan_resp = await client.post(
+        f"{API}/plans/",
+        json={"name": "Test Plan", "download_mbps": 10, "upload_mbps": 5, "monthly_price": "999.00"},
+        headers=auth_headers,
+    )
+    plan_id = plan_resp.json()["id"]
+
+    cust_resp = await client.post(
+        f"{API}/customers/",
+        json={
+            "full_name": "API Test User",
+            "email": "apitest@test.com",
+            "phone": "09170000000",
+            "pppoe_username": "apitest",
+            "pppoe_password": "pass123",
+            "plan_id": plan_id,
+        },
+        headers=auth_headers,
+    )
+    return plan_id, cust_resp.json()["id"]
+
+
+@pytest.mark.asyncio
+async def test_api_generate_invoices(client, auth_headers, plan_and_customer):
+    plan_id, customer_id = plan_and_customer
+
+    response = await client.post(
+        f"{API}/billing/invoices/generate",
+        json={"customer_id": customer_id},
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["generated"] == 1
+
+
+@pytest.mark.asyncio
+async def test_api_list_invoices(client, auth_headers, plan_and_customer):
+    plan_id, customer_id = plan_and_customer
+
+    await client.post(
+        f"{API}/billing/invoices/generate",
+        json={"customer_id": customer_id},
+        headers=auth_headers,
+    )
+
+    response = await client.get(f"{API}/billing/invoices", headers=auth_headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] >= 1
+    assert len(data["items"]) >= 1
+
+
+@pytest.mark.asyncio
+async def test_api_record_payment(client, auth_headers, plan_and_customer):
+    plan_id, customer_id = plan_and_customer
+
+    await client.post(
+        f"{API}/billing/invoices/generate",
+        json={"customer_id": customer_id},
+        headers=auth_headers,
+    )
+    inv_resp = await client.get(
+        f"{API}/billing/invoices",
+        params={"customer_id": customer_id},
+        headers=auth_headers,
+    )
+    invoice_id = inv_resp.json()["items"][0]["id"]
+
+    pay_resp = await client.post(
+        f"{API}/billing/payments",
+        json={
+            "invoice_id": invoice_id,
+            "amount": "999.00",
+            "method": "cash",
+        },
+        headers=auth_headers,
+    )
+    assert pay_resp.status_code == 201
+    assert pay_resp.json()["amount"] == "999.00"
+
+    inv_detail = await client.get(f"{API}/billing/invoices/{invoice_id}", headers=auth_headers)
+    assert inv_detail.json()["status"] == "paid"
+
+
+@pytest.mark.asyncio
+async def test_api_void_invoice(client, auth_headers, plan_and_customer):
+    plan_id, customer_id = plan_and_customer
+
+    await client.post(
+        f"{API}/billing/invoices/generate",
+        json={"customer_id": customer_id},
+        headers=auth_headers,
+    )
+    inv_resp = await client.get(
+        f"{API}/billing/invoices",
+        params={"customer_id": customer_id},
+        headers=auth_headers,
+    )
+    invoice_id = inv_resp.json()["items"][0]["id"]
+
+    void_resp = await client.put(
+        f"{API}/billing/invoices/{invoice_id}",
+        json={"status": "void"},
+        headers=auth_headers,
+    )
+    assert void_resp.status_code == 200
+    assert void_resp.json()["status"] == "void"
