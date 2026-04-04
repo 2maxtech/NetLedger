@@ -260,7 +260,451 @@ Available widgets:
 
 ---
 
+## Feature 8: Prepaid Voucher System
+
+Critical for PH market — Mikhmon and PHPMixBill's main selling point.
+
+### Database: `vouchers` table
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| code | String(20), unique | e.g. "NL-A3K9-X7M2" |
+| plan_id | UUID (FK → plans) | Which plan this voucher grants |
+| duration_days | Integer | How long access lasts (1, 7, 30, etc.) |
+| status | Enum | unused, active, expired, revoked |
+| customer_id | UUID (FK → customers), nullable | Set when redeemed |
+| activated_at | DateTime, nullable | When redeemed |
+| expires_at | DateTime, nullable | activated_at + duration_days |
+| batch_id | String(50), nullable | Group vouchers by generation batch |
+| created_at | DateTime | |
+
+### Backend
+
+- `POST /api/v1/vouchers/generate` — generate batch of vouchers (count, plan_id, duration_days). Returns codes.
+- `GET /api/v1/vouchers/` — list with status filter, batch filter, pagination
+- `POST /api/v1/vouchers/redeem` — redeem a code (customer_id + code). Creates/extends customer access.
+- `DELETE /api/v1/vouchers/{id}` — revoke unused voucher
+- `GET /api/v1/vouchers/batches` — list generation batches with counts
+
+Voucher code format: `NL-XXXX-XXXX` (alphanumeric, uppercase, no ambiguous chars).
+
+### Frontend: Vouchers Page (`/vouchers`)
+
+Under Billing menu:
+- Table: code, plan name, duration, status (tag), customer (if redeemed), created/activated dates
+- "Generate Vouchers" button → modal: plan dropdown, duration, count (1-500)
+- Batch filter dropdown
+- "Print Vouchers" — generates a printable card layout for selected vouchers
+- "Redeem" button → modal with code input + customer selector
+
+### Customer Portal
+
+- "Redeem Voucher" section on portal dashboard
+- Input voucher code → extends access
+
+---
+
+## Feature 9: GCash/Maya Payment Integration
+
+### Approach: Payment Gateway Abstraction
+
+Support GCash and Maya (PayMaya) via their respective APIs. Both use similar webhook patterns.
+
+### Database: `payment_gateways` table
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| name | String(50) | "gcash", "maya" |
+| is_active | Boolean | |
+| api_key | String(255) | |
+| api_secret | String(255) | |
+| webhook_secret | String(255) | |
+| mode | Enum | sandbox, production |
+| created_at | DateTime | |
+
+### Backend
+
+- `GET /api/v1/settings/payment-gateways` — list configured gateways
+- `PUT /api/v1/settings/payment-gateways/{name}` — configure gateway credentials
+- `POST /api/v1/portal/pay` — create payment intent (customer selects invoice + gateway)
+- `POST /api/v1/webhooks/gcash` — GCash payment confirmation webhook
+- `POST /api/v1/webhooks/maya` — Maya payment confirmation webhook
+
+On webhook confirmation → auto-record payment → auto-reconnect if applicable.
+
+### Frontend
+
+- Settings page: Payment Gateways tab — configure GCash/Maya API keys
+- Customer portal: "Pay Now" button on invoice → select GCash or Maya → redirect to payment page → webhook confirms → invoice marked paid
+- Admin invoices: show payment method badge (cash/bank/gcash/maya)
+
+### PaymentMethod Enum Update
+
+Add `gcash` and `maya` to the existing `PaymentMethod` enum in the Payment model.
+
+---
+
+## Feature 10: MikroTik Hotspot User Management
+
+### Scope
+
+Manage MikroTik hotspot users (separate from PPPoE). Used for WiFi voucher/captive portal systems.
+
+### MikroTik REST Endpoints
+
+- `GET /rest/ip/hotspot/user` — list hotspot users
+- `PUT /rest/ip/hotspot/user` — create user
+- `PATCH /rest/ip/hotspot/user/{id}` — update (enable/disable)
+- `DELETE /rest/ip/hotspot/user/{id}` — delete
+- `GET /rest/ip/hotspot/active` — active hotspot sessions
+- `GET /rest/ip/hotspot/host` — connected hosts
+
+### Backend
+
+Add methods to `MikroTikClient`:
+- `get_hotspot_users()`, `create_hotspot_user()`, `enable/disable_hotspot_user()`, `delete_hotspot_user()`
+- `get_hotspot_sessions()`
+
+API routes:
+- `GET /api/v1/network/hotspot/users` — list hotspot users on a router
+- `POST /api/v1/network/hotspot/users` — create hotspot user
+- `GET /api/v1/network/hotspot/sessions` — active hotspot sessions
+
+### Frontend: Hotspot Page (`/hotspot`)
+
+New sidebar item under Active Users:
+- Table: username, password, profile, time-limit, status, actions
+- "Add User" button → quick create for walk-in customers
+- Active sessions tab
+- Ties into voucher system (voucher can generate hotspot user instead of PPPoE)
+
+---
+
+## Feature 11: Data Cap / Fair Use Policy (FUP)
+
+### Approach
+
+Track per-customer data usage. When usage exceeds a cap, auto-throttle to reduced speed.
+
+### Database: `data_caps` fields on Plan model
+
+Add to Plan:
+- `data_cap_gb: Integer, nullable` — monthly data cap in GB (null = unlimited)
+- `fup_download_mbps: Integer, nullable` — throttled speed after cap hit
+- `fup_upload_mbps: Integer, nullable` — throttled speed after cap hit
+
+### MikroTik Accounting
+
+MikroTik PPPoE tracks per-session bytes. We can:
+1. Poll `GET /rest/ppp/active` and sum bytes for each user
+2. Or use MikroTik's accounting feature (`/ip/accounting`)
+
+Celery task runs hourly: fetch active session traffic → update `bandwidth_usage` table → check cap → auto-throttle by switching profile.
+
+### Backend
+
+- `GET /api/v1/customers/{id}/usage` — current month usage
+- Celery task: `check_data_caps` — runs hourly, throttles customers over cap
+- Auto-restore speed at month start
+
+### Frontend
+
+- Customer detail page: usage bar showing GB used / cap
+- Plan form: data cap field, FUP speed fields
+- Dashboard: top bandwidth consumers widget
+
+---
+
+## Feature 12: Ticket/Support System
+
+### Database: `tickets` table
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| customer_id | UUID (FK → customers) | |
+| subject | String(200) | |
+| status | Enum | open, in_progress, resolved, closed |
+| priority | Enum | low, medium, high, urgent |
+| assigned_to | UUID (FK → users), nullable | staff member |
+| created_at | DateTime | |
+| resolved_at | DateTime, nullable | |
+
+### `ticket_messages` table
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| ticket_id | UUID (FK → tickets) | |
+| sender_type | Enum | staff, customer |
+| sender_id | UUID | user or customer ID |
+| message | Text | |
+| created_at | DateTime | |
+
+### Backend
+
+- `POST /api/v1/tickets/` — create ticket
+- `GET /api/v1/tickets/` — list with status/priority/assigned filter
+- `GET /api/v1/tickets/{id}` — ticket with messages
+- `PUT /api/v1/tickets/{id}` — update status/priority/assigned
+- `POST /api/v1/tickets/{id}/messages` — add message
+- Portal: `POST /api/v1/portal/tickets` — customer creates ticket
+- Portal: `GET /api/v1/portal/tickets` — customer views their tickets
+
+### Frontend
+
+**Admin: Tickets Page** (`/tickets`):
+- Table: ID, customer name, subject, status tag, priority tag, assigned to, created date
+- Click row → ticket detail with message thread (chat-like UI)
+- Reply input at bottom
+- Status/priority/assignment dropdowns in header
+
+**Customer Portal: Support section**:
+- "Submit Ticket" button
+- List of their tickets with status
+- Click → view messages + reply
+
+---
+
+## Feature 13: SMS Notifications
+
+### Approach: Pluggable SMS Provider
+
+Support popular PH SMS APIs: Semaphore, Globe Labs, or generic HTTP.
+
+### Database: SMS Settings in `app_settings`
+
+Keys: `sms_provider` (semaphore/globe/custom), `sms_api_key`, `sms_sender_name`
+
+### Backend
+
+- `POST /api/v1/settings/sms` — configure SMS provider
+- `POST /api/v1/settings/sms/test` — send test SMS
+- Notification service: when creating a notification with type=sms, send via configured provider
+- Auto-send SMS on: invoice due reminder, overdue notice, service disconnection, payment confirmation
+
+### Celery Task
+
+Existing `process_pending_notifications` task already handles notifications. Add SMS sending alongside email:
+```python
+if notification.type == NotificationType.sms:
+    await send_sms(notification.customer.phone, notification.message)
+```
+
+### Frontend
+
+Settings page: SMS tab — provider dropdown, API key, sender name, test button.
+
+---
+
+## Feature 14: Plan Upgrade/Downgrade with Instant Speed Change
+
+### Backend
+
+`POST /api/v1/customers/{id}/change-plan`:
+- Body: `{"plan_id": "new-plan-uuid"}`
+- Updates customer's plan_id
+- Creates prorated invoice (credit remaining days of old plan, charge new plan)
+- Immediately updates MikroTik: ensure new profile, update secret's profile
+- Subscriber gets new speed on next PPPoE reconnect (or immediately if we disconnect/reconnect them)
+
+### Frontend
+
+Customer detail page: "Change Plan" button → modal with plan selector → shows proration calculation → confirm.
+
+---
+
+## Feature 15: IP Address Management (IPAM)
+
+### Database: `ip_pools` table
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| name | String(100) | e.g. "Pool-Brgy1" |
+| router_id | UUID (FK → routers) | |
+| range_start | String(15) | e.g. "192.168.50.2" |
+| range_end | String(15) | e.g. "192.168.50.254" |
+| subnet | String(18) | e.g. "192.168.50.0/24" |
+| created_at | DateTime | |
+
+### Backend
+
+- `GET /api/v1/ipam/pools` — list pools with usage stats
+- `POST /api/v1/ipam/pools` — create pool
+- `GET /api/v1/ipam/pools/{id}/usage` — which IPs are assigned/free
+- Sync with MikroTik IP pools on router
+
+### Frontend: IPAM Page (`/ipam`)
+
+Visual IP grid showing used (green) / free (gray) / reserved (yellow) addresses per pool.
+
+---
+
+## Feature 16: Customer Map View
+
+### Approach
+
+Use customer address + area to plot on a map. Leaflet.js (free, no API key needed).
+
+### Frontend: Map Page (`/map`)
+
+- Leaflet map centered on operator's area
+- Pins for each customer (color by status: green=active, yellow=suspended, red=disconnected)
+- Click pin → customer quick info popup
+- Area polygons overlay (optional)
+- Router location pins with different icon
+
+### Customer Model Addition
+
+Add `latitude: Float, nullable` and `longitude: Float, nullable` to Customer model. Set manually or via geocoding.
+
+---
+
+## Feature 17: Audit/Activity Logs
+
+### Database: `audit_logs` table
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | UUID (PK) | |
+| user_id | UUID (FK → users), nullable | who did it |
+| action | String(50) | e.g. "customer.create", "payment.record" |
+| entity_type | String(50) | e.g. "customer", "invoice" |
+| entity_id | UUID, nullable | |
+| details | JSON | changed fields, old/new values |
+| ip_address | String(45), nullable | |
+| created_at | DateTime | |
+
+### Backend
+
+Middleware or decorator that auto-logs: customer CRUD, payment recording, plan changes, router changes, login/logout.
+
+- `GET /api/v1/audit-logs/` — list with entity/user/date filters
+
+### Frontend
+
+System > Audit Logs page — table with filters. Already have a Logs page, enhance it.
+
+---
+
+## Feature 18: Bulk SMS/Email
+
+### Backend
+
+- `POST /api/v1/notifications/bulk` — send message to filtered customer set
+- Body: `{"type": "sms|email", "subject": "...", "message": "...", "filters": {"status": "active", "area_id": "..."}}`
+
+### Frontend
+
+New "Send Notification" button on Customers page toolbar. Opens modal:
+- Filter: status, area, plan
+- Message type: SMS or Email
+- Template selector or free text
+- Preview count: "Will send to 45 customers"
+- Send button
+
+---
+
+## Feature 19: Scheduled Maintenance Mode
+
+### Backend
+
+- `POST /api/v1/maintenance/start` — enable maintenance mode for a router or globally
+- `POST /api/v1/maintenance/end` — disable
+- During maintenance: suppress disconnect alerts, show banner to customers
+- Optional: notify customers before maintenance via SMS/email
+
+### Database
+
+Add to Router model: `maintenance_mode: Boolean, default False`, `maintenance_message: Text, nullable`
+
+### Frontend
+
+- Router detail: "Enable Maintenance" toggle
+- Customer portal: shows maintenance banner when their router is in maintenance
+- Dashboard: maintenance badge on router cards
+
+---
+
 ## What Stays the Same
+
+- Core billing engine logic (enhanced but not replaced)
+- Database (PostgreSQL + Redis)
+- Docker Compose architecture
+- Auth system (enhanced with audit logging)
+
+## Complete File Summary
+
+### New Backend Files
+| File | Purpose |
+|------|---------|
+| `backend/app/models/router.py` | Already exists (Router, Area) |
+| `backend/app/models/expense.py` | Expense model |
+| `backend/app/models/app_setting.py` | AppSetting key-value model |
+| `backend/app/models/voucher.py` | Voucher model |
+| `backend/app/models/payment_gateway.py` | Payment gateway config model |
+| `backend/app/models/ticket.py` | Ticket + TicketMessage models |
+| `backend/app/models/ip_pool.py` | IP pool model |
+| `backend/app/models/audit_log.py` | Audit log model |
+| `backend/app/schemas/expense.py` | Expense schemas |
+| `backend/app/schemas/voucher.py` | Voucher schemas |
+| `backend/app/schemas/ticket.py` | Ticket schemas |
+| `backend/app/api/admin/expenses.py` | Expense CRUD API |
+| `backend/app/api/admin/settings.py` | Settings API (SMTP, SMS, payment gateways) |
+| `backend/app/api/admin/vouchers.py` | Voucher generate/redeem API |
+| `backend/app/api/admin/tickets.py` | Ticket CRUD + messages API |
+| `backend/app/api/admin/ipam.py` | IP pool management API |
+| `backend/app/api/admin/audit.py` | Audit log query API |
+| `backend/app/api/webhooks.py` | GCash/Maya webhook handlers |
+| `backend/app/services/sms.py` | SMS provider abstraction |
+| `backend/app/services/payment_gateway.py` | GCash/Maya payment intent creation |
+| `backend/alembic/versions/005_feature_pack.py` | All new tables migration |
+
+### New Frontend Files
+| File | Purpose |
+|------|---------|
+| `frontend/src/api/routers.ts` | Router + Area API |
+| `frontend/src/api/vouchers.ts` | Voucher API |
+| `frontend/src/api/tickets.ts` | Ticket API |
+| `frontend/src/api/expenses.ts` | Expense API |
+| `frontend/src/pages/Routers.tsx` | Router management |
+| `frontend/src/pages/Areas.tsx` | Area management |
+| `frontend/src/pages/Vouchers.tsx` | Voucher management |
+| `frontend/src/pages/Expenses.tsx` | Expense tracking |
+| `frontend/src/pages/Tickets.tsx` | Ticket management |
+| `frontend/src/pages/TicketDetail.tsx` | Ticket conversation |
+| `frontend/src/pages/Hotspot.tsx` | Hotspot user management |
+| `frontend/src/pages/IPAM.tsx` | IP address management |
+| `frontend/src/pages/Map.tsx` | Customer map view |
+| `frontend/src/pages/Settings.tsx` | SMTP, SMS, payment gateway config |
+| `frontend/src/pages/AuditLogs.tsx` | Audit log viewer |
+| `frontend/src/pages/portal/PortalTickets.tsx` | Customer portal tickets |
+| `frontend/src/pages/portal/PortalTicketDetail.tsx` | Portal ticket conversation |
+
+### Modified Files
+| File | Change |
+|------|--------|
+| `frontend/src/components/Layout/SideMenu.tsx` | All new menu items |
+| `frontend/src/pages/Dashboard.tsx` | Multi-router, expenses, net profit, customizable widgets |
+| `frontend/src/pages/ActiveUsers.tsx` | Router filter |
+| `frontend/src/api/network.ts` | Multi-router types, scan API |
+| `frontend/src/pages/billing/Invoices.tsx` | Print button |
+| `frontend/src/pages/portal/PortalInvoices.tsx` | Print + pay online button |
+| `frontend/src/pages/portal/PortalDashboard.tsx` | Redeem voucher, submit ticket |
+| `backend/app/api/admin/network.py` | Scan endpoint, multi-router dashboard |
+| `backend/app/api/admin/customers.py` | Change plan endpoint |
+| `backend/app/models/__init__.py` | Register all new models |
+| `backend/app/models/plan.py` | Data cap / FUP fields |
+| `backend/app/models/customer.py` | lat/lng fields |
+| `backend/app/models/payment.py` | Add gcash/maya to PaymentMethod |
+| `backend/app/main.py` | Register all new routers |
+| `backend/app/services/notification.py` | Read SMTP from DB, add SMS |
+| `backend/app/services/mikrotik.py` | Hotspot methods |
+| `backend/app/celery_app.py` | Add data cap check task |
+| Route definitions | All new page routes |
 
 - Billing engine logic
 - Customer portal (all pages)
