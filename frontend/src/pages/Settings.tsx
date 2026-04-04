@@ -18,7 +18,16 @@ const SmtpSettings = () => {
   });
 
   useEffect(() => {
-    if (data) form.setFieldsValue(data);
+    if (data) {
+      form.setFieldsValue({
+        host: data.smtp_host,
+        port: data.smtp_port ? Number(data.smtp_port) : 587,
+        username: data.smtp_user,
+        password: data.smtp_password,
+        from_email: data.smtp_from,
+        from_name: data.smtp_from_name,
+      });
+    }
   }, [data, form]);
 
   const saveMut = useMutation({
@@ -33,7 +42,15 @@ const SmtpSettings = () => {
     onError: () => message.error('Test email failed — check your settings'),
   });
 
-  const onFinish = (values: any) => saveMut.mutate(values);
+  const onFinish = (values: any) =>
+    saveMut.mutate({
+      smtp_host: values.host,
+      smtp_port: values.port,
+      smtp_user: values.username,
+      smtp_password: values.password,
+      smtp_from: values.from_email,
+      smtp_from_name: values.from_name,
+    });
 
   const sendTest = () => {
     form

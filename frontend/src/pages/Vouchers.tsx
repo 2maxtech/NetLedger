@@ -14,10 +14,10 @@ import { getPlans } from '../api/plans';
 import { getCustomers } from '../api/customers';
 
 const STATUS_COLORS: Record<string, string> = {
-  available: '#10b981',
-  redeemed: '#6b7280',
-  expired: '#ef4444',
-  revoked: '#f59e0b',
+  unused: '#e8700a',
+  active: '#10b981',
+  expired: '#9ca3af',
+  revoked: '#ef4444',
 };
 
 const Vouchers = () => {
@@ -126,7 +126,7 @@ const Vouchers = () => {
       key: 'actions',
       width: 80,
       render: (_: unknown, r: VoucherType) =>
-        r.status === 'available' ? (
+        r.status === 'unused' ? (
           <Popconfirm title="Revoke this voucher?" onConfirm={() => revokeMut.mutate(r.id)}>
             <Button size="small" danger icon={<DeleteOutlined />} />
           </Popconfirm>
@@ -160,8 +160,8 @@ const Vouchers = () => {
             value={statusFilter}
             onChange={setStatusFilter}
           >
-            <Select.Option value="available">Available</Select.Option>
-            <Select.Option value="redeemed">Redeemed</Select.Option>
+            <Select.Option value="unused">Unused</Select.Option>
+            <Select.Option value="active">Active</Select.Option>
             <Select.Option value="expired">Expired</Select.Option>
             <Select.Option value="revoked">Revoked</Select.Option>
           </Select>

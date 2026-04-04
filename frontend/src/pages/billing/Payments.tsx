@@ -181,6 +181,8 @@ const Payments = () => {
               <Select.Option value="cash">Cash</Select.Option>
               <Select.Option value="bank">Bank Transfer</Select.Option>
               <Select.Option value="online">Online</Select.Option>
+              <Select.Option value="gcash">GCash</Select.Option>
+              <Select.Option value="maya">Maya</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item name="reference_number" label="Reference Number">

@@ -60,8 +60,8 @@ const Routers = () => {
   const scanMut = useMutation({
     mutationFn: scanNetwork,
     onSuccess: (res) => {
-      setScanResults(res.data?.devices || []);
-      message.success(`Found ${res.data?.devices?.length || 0} device(s)`);
+      setScanResults(res.data?.found || []);
+      message.success(`Found ${res.data?.found?.length || 0} device(s)`);
     },
     onError: () => message.error('Scan failed'),
   });
