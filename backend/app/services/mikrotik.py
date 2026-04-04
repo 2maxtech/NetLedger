@@ -236,12 +236,75 @@ class MikroTikClient:
         return resp.json()
 
 
-# Singleton instance — falls back gracefully if MIKROTIK_* settings don't exist yet.
-try:
-    mikrotik = MikroTikClient()
-except Exception:  # pragma: no cover
-    mikrotik = MikroTikClient(  # type: ignore[assignment]
-        url="https://192.168.88.1",
-        user="admin",
-        password="",
+# --- Client Factory + Cache ---
+
+_client_cache: dict[str, MikroTikClient] = {}
+
+
+def get_mikrotik_client(
+    router_id: str | None = None,
+    url: str | None = None,
+    user: str | None = None,
+    password: str | None = None,
+) -> MikroTikClient:
+    """Get or create a MikroTikClient. Cached by router_id."""
+    cache_key = router_id or "default"
+
+    if cache_key in _client_cache:
+        return _client_cache[cache_key]
+
+    client = MikroTikClient(url=url, user=user, password=password)
+    _client_cache[cache_key] = client
+    return client
+
+
+def invalidate_client(router_id: str) -> None:
+    """Remove a cached client (call when router credentials change)."""
+    _client_cache.pop(router_id, None)
+    _client_cache.pop(str(router_id), None)
+
+
+async def get_customer_router(db, customer):
+    """Resolve the router for a customer: direct → area → first active."""
+    from sqlalchemy import select
+    from app.models.router import Router
+
+    # 1. Direct assignment
+    if customer.router_id:
+        result = await db.execute(select(Router).where(Router.id == customer.router_id))
+        router = result.scalar_one_or_none()
+        if router and router.is_active:
+            return router
+
+    # 2. Area's default router
+    if hasattr(customer, 'area') and customer.area and customer.area.router_id:
+        result = await db.execute(select(Router).where(Router.id == customer.area.router_id))
+        router = result.scalar_one_or_none()
+        if router and router.is_active:
+            return router
+
+    # 3. System default (first active router)
+    result = await db.execute(
+        select(Router).where(Router.is_active == True).order_by(Router.created_at).limit(1)
     )
+    return result.scalar_one_or_none()
+
+
+async def get_client_for_customer(db, customer) -> tuple[MikroTikClient | None, str | None]:
+    """Resolve the customer's router and return (client, router_id)."""
+    router = await get_customer_router(db, customer)
+    if not router:
+        logger.warning("No router found for customer %s", customer.id)
+        return None, None
+
+    client = get_mikrotik_client(
+        router_id=str(router.id),
+        url=router.url,
+        user=router.username,
+        password=router.password,
+    )
+    return client, str(router.id)
+
+
+# Legacy singleton for backward compatibility (uses env vars)
+mikrotik = get_mikrotik_client()
