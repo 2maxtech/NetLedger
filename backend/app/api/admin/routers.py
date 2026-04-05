@@ -39,7 +39,7 @@ async def create_router(
     data = body.model_dump()
     # Auto-prepend http:// if no protocol specified
     if data.get("url") and not data["url"].startswith(("http://", "https://")):
-        data["url"] = "https://" + data["url"]
+        data["url"] = "http://" + data["url"]
     r = Router(**data)
     r.owner_id = uuid.UUID(tenant_id)
     db.add(r)

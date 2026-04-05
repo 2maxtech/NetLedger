@@ -53,25 +53,53 @@ class MikroTikClient:
             )
         return self._client
 
+    def _alt_url(self) -> str | None:
+        """Return the URL with the alternate protocol, or None if already tried."""
+        if self.url.startswith("https://"):
+            return "http://" + self.url[8:]
+        if self.url.startswith("http://"):
+            return "https://" + self.url[7:]
+        return None
+
     async def _request(
         self,
         method: str,
         path: str,
         json: Any = None,
     ) -> httpx.Response:
-        """Perform an authenticated REST request, mapping HTTP errors to exceptions."""
+        """Perform an authenticated REST request, mapping HTTP errors to exceptions.
+
+        On connection failure, automatically retries with the alternate protocol
+        (http ↔ https) and switches permanently if the fallback succeeds.
+        """
         url = f"{self.url}/rest/{path.lstrip('/')}"
         client = await self._get_client()
         try:
             response = await client.request(method, url, json=json)
-        except httpx.ConnectError as exc:
-            raise MikroTikConnectionError(f"Connection refused to {self.url}: {exc}") from exc
-        except httpx.TimeoutException as exc:
+        except (httpx.ConnectError, httpx.TimeoutException) as exc:
+            # Try the other protocol before giving up
+            alt = self._alt_url()
+            if alt:
+                alt_full = f"{alt}/rest/{path.lstrip('/')}"
+                try:
+                    response = await client.request(method, alt_full, json=json)
+                    # Fallback worked — switch permanently
+                    logger.info("Switched MikroTik URL from %s to %s", self.url, alt)
+                    self.url = alt
+                except (httpx.ConnectError, httpx.TimeoutException):
+                    pass  # Both failed, raise the original error below
+                else:
+                    # We got a response from fallback, skip to status checks
+                    return self._check_response(response)
+            if isinstance(exc, httpx.ConnectError):
+                raise MikroTikConnectionError(f"Connection refused to {self.url}: {exc}") from exc
             raise MikroTikConnectionError(f"Request timed out to {self.url}: {exc}") from exc
 
+        return self._check_response(response)
+
+    def _check_response(self, response: httpx.Response) -> httpx.Response:
         if response.status_code == 401:
             raise MikroTikAuthError("Authentication failed (401)", status_code=401)
-
         if response.status_code >= 400:
             try:
                 detail = response.json().get("detail", response.text)
@@ -81,7 +109,6 @@ class MikroTikClient:
                 f"API error {response.status_code}: {detail}",
                 status_code=response.status_code,
             )
-
         return response
 
     # --- System ---
@@ -270,7 +297,7 @@ def get_mikrotik_client(
 
     # Auto-prepend http:// if no protocol
     if url and not url.startswith(("http://", "https://")):
-        url = "https://" + url
+        url = "http://" + url
     client = MikroTikClient(url=url, user=user, password=password)
     _client_cache[cache_key] = client
     return client
