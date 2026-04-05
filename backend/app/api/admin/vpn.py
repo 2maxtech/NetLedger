@@ -14,7 +14,7 @@ from app.models.user import User
 
 router = APIRouter(prefix="/vpn", tags=["vpn"])
 
-WG_API_URL = "http://192.168.40.40:9999"
+WG_API_URL = "http://172.18.0.1:9999"
 
 
 class VpnActivateRequest(BaseModel):
