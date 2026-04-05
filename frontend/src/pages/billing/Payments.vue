@@ -54,8 +54,8 @@ function applyFilters() {
 async function fetchUnpaidInvoices() {
   unpaidLoading.value = true
   try {
-    const { data } = await getInvoices({ status: 'pending', size: 200 })
-    const { data: overdueData } = await getInvoices({ status: 'overdue', size: 200 })
+    const { data } = await getInvoices({ status: 'pending', size: 100 })
+    const { data: overdueData } = await getInvoices({ status: 'overdue', size: 100 })
     unpaidInvoices.value = [...data.items, ...overdueData.items]
   } catch (e) {
     console.error('Failed to fetch unpaid invoices', e)
