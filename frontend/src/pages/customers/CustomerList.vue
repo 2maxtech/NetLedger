@@ -37,6 +37,7 @@ const addForm = ref({
   pppoe_username: '',
   pppoe_password: '',
   plan_id: '',
+  billing_due_day: '15',
   router_id: '',
   area_id: '',
   mac_address: '',
@@ -143,6 +144,7 @@ function resetAddForm() {
     pppoe_username: '',
     pppoe_password: '',
     plan_id: '',
+    billing_due_day: '15',
     router_id: '',
     area_id: '',
     mac_address: '',
@@ -164,6 +166,7 @@ async function handleAdd() {
   addLoading.value = true
   try {
     const payload: Record<string, any> = { ...addForm.value }
+    payload.billing_due_day = parseInt(payload.billing_due_day) || 15
     if (!payload.plan_id) delete payload.plan_id
     if (!payload.router_id) delete payload.router_id
     if (!payload.area_id) delete payload.area_id
@@ -188,6 +191,7 @@ function openEditModal(customer: Customer) {
     pppoe_username: customer.pppoe_username,
     pppoe_password: '',
     plan_id: customer.plan_id || '',
+    billing_due_day: String((customer as any).billing_due_day || 15),
     router_id: customer.router_id || '',
     area_id: customer.area_id || '',
     mac_address: customer.mac_address || '',
@@ -206,6 +210,7 @@ async function handleEdit() {
   try {
     const { updateCustomer } = await import('../../api/customers')
     const payload: Record<string, any> = { ...editForm.value }
+    payload.billing_due_day = parseInt(payload.billing_due_day) || 15
     if (!payload.pppoe_password) delete payload.pppoe_password
     if (!payload.plan_id) payload.plan_id = null
     if (!payload.router_id) payload.router_id = null
@@ -486,6 +491,15 @@ onMounted(() => {
               </select>
             </div>
             <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Billing Due Day</label>
+              <select
+                v-model="addForm.billing_due_day"
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+              >
+                <option v-for="d in 28" :key="d" :value="String(d)">{{ d }}</option>
+              </select>
+            </div>
+            <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">MAC Address</label>
               <input
                 v-model="addForm.mac_address"
@@ -627,6 +641,15 @@ onMounted(() => {
                 <option v-for="plan in plans" :key="plan.id" :value="plan.id">
                   {{ plan.name }} - &#8369;{{ Number(plan.monthly_price).toLocaleString() }}/mo
                 </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Billing Due Day</label>
+              <select
+                v-model="editForm.billing_due_day"
+                class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+              >
+                <option v-for="d in 28" :key="d" :value="String(d)">{{ d }}</option>
               </select>
             </div>
             <div>

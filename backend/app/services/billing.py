@@ -32,7 +32,7 @@ async def generate_invoice(db: AsyncSession, customer: Customer, billing_period:
         return existing
 
     plan = customer.plan
-    due_day = min(settings.BILLING_DUE_DAY, 28)
+    due_day = min(customer.billing_due_day or settings.BILLING_DUE_DAY, 28)
     due_date = billing_period.replace(day=due_day)
 
     invoice = Invoice(

@@ -15,6 +15,7 @@ class CustomerCreate(BaseModel):
     pppoe_username: str
     pppoe_password: str
     plan_id: uuid.UUID
+    billing_due_day: int = 15
     mikrotik_secret_id: str | None = None
     mikrotik_queue_id: str | None = None
     mac_address: str | None = None
@@ -33,6 +34,7 @@ class CustomerUpdate(BaseModel):
     pppoe_password: str | None = None
     plan_id: uuid.UUID | None = None
     status: CustomerStatus | None = None
+    billing_due_day: int | None = None
     mikrotik_secret_id: str | None = None
     mikrotik_queue_id: str | None = None
     mac_address: str | None = None
@@ -51,6 +53,7 @@ class CustomerResponse(BaseModel):
     pppoe_username: str
     status: CustomerStatus
     plan_id: uuid.UUID
+    billing_due_day: int = 15
     plan: PlanResponse | None = None
     created_at: datetime
     mikrotik_secret_id: str | None = None
