@@ -1,7 +1,7 @@
 import uuid
 from decimal import Decimal
 
-from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -10,8 +10,11 @@ from app.models.base import BaseModel
 
 class Plan(BaseModel):
     __tablename__ = "plans"
+    __table_args__ = (
+        UniqueConstraint("name", "owner_id", name="uq_plans_name_owner"),
+    )
 
-    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
     download_mbps: Mapped[int] = mapped_column(Integer, nullable=False)
     upload_mbps: Mapped[int] = mapped_column(Integer, nullable=False)
     monthly_price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)

@@ -1,7 +1,7 @@
 import enum
 import uuid
 
-from sqlalchemy import Boolean, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Enum, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,12 +17,16 @@ class CustomerStatus(str, enum.Enum):
 
 class Customer(BaseModel):
     __tablename__ = "customers"
+    __table_args__ = (
+        UniqueConstraint("pppoe_username", "owner_id", name="uq_customers_pppoe_owner"),
+        UniqueConstraint("email", "owner_id", name="uq_customers_email_owner"),
+    )
 
     full_name: Mapped[str] = mapped_column(String(200), nullable=False)
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
     phone: Mapped[str] = mapped_column(String(20), nullable=False)
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
-    pppoe_username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    pppoe_username: Mapped[str] = mapped_column(String(100), nullable=False)
     pppoe_password: Mapped[str] = mapped_column(String(255), nullable=False)
     status: Mapped[CustomerStatus] = mapped_column(
         Enum(CustomerStatus), default=CustomerStatus.active, nullable=False
