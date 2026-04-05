@@ -115,15 +115,22 @@ async function handleSaveAccount() {
   accountSaving.value = true
   accountMsg.value = ''
   try {
-    await updateProfile({
+    const { data } = await updateProfile({
       username: account.value.username,
       email: account.value.email,
       full_name: account.value.full_name,
       company_name: account.value.company_name,
       phone: account.value.phone,
     })
-    accountMsg.value = 'Account updated successfully'
-    accountMsgType.value = 'success'
+    if (data.email_change_pending) {
+      accountMsg.value = data.message || `Confirmation email sent to ${data.email_change_pending}. Check your inbox.`
+      accountMsgType.value = 'success'
+      // Revert email field to current email (not changed yet)
+      account.value.email = data.email
+    } else {
+      accountMsg.value = 'Account updated successfully'
+      accountMsgType.value = 'success'
+    }
   } catch (e: any) {
     accountMsg.value = e.response?.data?.detail || 'Failed to update account'
     accountMsgType.value = 'error'

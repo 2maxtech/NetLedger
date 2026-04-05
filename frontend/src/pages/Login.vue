@@ -27,6 +27,15 @@ onMounted(async () => {
       verifyError.value = e.response?.data?.detail || 'Verification failed. Link may be expired.'
     }
   }
+  const emailToken = route.query.verify_email as string
+  if (emailToken) {
+    try {
+      const { data } = await api.get('/auth/verify-email', { params: { token: emailToken } })
+      verifyMsg.value = data.message || 'Email updated successfully!'
+    } catch (e: any) {
+      verifyError.value = e.response?.data?.detail || 'Email verification failed. Link may be expired.'
+    }
+  }
 })
 
 async function handleLogin() {

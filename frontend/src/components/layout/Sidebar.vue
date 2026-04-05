@@ -62,6 +62,7 @@ const superAdminMenu: MenuItem[] = [
   { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
   { path: '/system/organizations', label: 'Organizations', icon: 'users' },
   { path: '/system/status', label: 'System Status', icon: 'server' },
+  { path: '/settings', label: 'Settings', icon: 'settings' },
 ]
 
 const menuItems = computed(() => showAdminMenu.value ? ispMenu : superAdminMenu)
