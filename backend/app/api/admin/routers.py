@@ -137,7 +137,14 @@ async def get_router_status(
             version=resources.get("version", ""),
         )
     except Exception as e:
-        return RouterStatusResponse(id=r.id, name=r.name, connected=False, error=str(e))
+        error_msg = str(e)
+        if "timed out" in error_msg.lower() or "connection refused" in error_msg.lower():
+            error_msg = (
+                f"Cannot reach router at {r.url}. "
+                "Make sure NetLedger can access the router. "
+                "If behind NAT, port-forward port 443 or run NetLedger on the same LAN."
+            )
+        return RouterStatusResponse(id=r.id, name=r.name, connected=False, error=error_msg)
 
 
 @router.post("/{router_id}/import")
@@ -160,7 +167,15 @@ async def import_from_router(
         mt_profiles = await client.get_profiles()
         mt_secrets = await client.get_secrets()
     except Exception as e:
-        return {"error": f"Failed to connect: {e}"}
+        error_msg = str(e)
+        if "timed out" in error_msg.lower() or "connection refused" in error_msg.lower():
+            error_msg = (
+                f"Cannot reach router at {r.url}. "
+                "Make sure NetLedger can access the router's IP/hostname. "
+                "If your router is behind NAT, you need to port-forward the REST API (port 443) "
+                "or run NetLedger on the same local network."
+            )
+        raise HTTPException(status_code=502, detail=error_msg)
 
     # Build profile → rate-limit map (include ALL profiles, not just those with rate-limit)
     profile_info: dict[str, str] = {}
