@@ -221,13 +221,10 @@ class MikroTikClient:
                     logger.info("Updated profile '%s' rate-limit to %s", name, rate_limit)
                 return name
 
-        # Create new profile inheriting from default
-        default = next((p for p in profiles if p.get("name") == "default"), {})
+        # Create new profile — only set name and rate-limit, let MikroTik use defaults
+        # for local/remote address to avoid pool conflicts
         payload = {
             "name": name,
-            "local-address": default.get("local-address", ""),
-            "remote-address": default.get("remote-address", ""),
-            "dns-server": default.get("dns-server", "8.8.8.8"),
             "rate-limit": rate_limit,
         }
         await self._request("PUT", "ppp/profile", json=payload)
