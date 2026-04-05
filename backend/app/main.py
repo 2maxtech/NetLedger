@@ -19,6 +19,7 @@ from app.api.admin.vouchers import router as vouchers_router
 from app.api.admin.tickets import router as tickets_router
 from app.api.admin.ipam import router as ipam_router
 from app.api.admin.audit import router as audit_router
+from app.api.admin.vpn import router as vpn_router
 from app.core.config import settings
 
 app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_PREFIX}/openapi.json")
@@ -47,6 +48,7 @@ app.include_router(tickets_router, prefix=settings.API_V1_PREFIX)
 app.include_router(ipam_router, prefix=settings.API_V1_PREFIX)
 app.include_router(audit_router, prefix=settings.API_V1_PREFIX)
 app.include_router(organizations_router, prefix=settings.API_V1_PREFIX)
+app.include_router(vpn_router, prefix=settings.API_V1_PREFIX)
 
 
 # Serve uploaded files

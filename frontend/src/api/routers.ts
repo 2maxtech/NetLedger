@@ -74,3 +74,40 @@ export function updateArea(id: string, data: { name?: string; description?: stri
 export function deleteArea(id: string) {
   return api.delete(`/areas/${id}`)
 }
+
+// VPN
+export interface VpnSetupResponse {
+  tunnel_ip: string
+  server_public_key: string
+  endpoint: string
+  script: string
+  instructions: string[]
+}
+
+export interface VpnActivateResponse {
+  status: string
+  tunnel_ip: string
+  router_url: string
+  message: string
+}
+
+export interface VpnStatusResponse {
+  status: string
+  tunnel_ip?: string
+  endpoint?: string
+  latest_handshake?: number
+  rx_bytes?: number
+  tx_bytes?: number
+}
+
+export function vpnSetup(routerId: string) {
+  return api.post<VpnSetupResponse>(`/vpn/${routerId}/setup`)
+}
+
+export function vpnActivate(routerId: string, data: { public_key: string; client_lan?: string }) {
+  return api.post<VpnActivateResponse>(`/vpn/${routerId}/activate`, data)
+}
+
+export function vpnStatus(routerId: string) {
+  return api.get<VpnStatusResponse>(`/vpn/${routerId}/vpn-status`)
+}

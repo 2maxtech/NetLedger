@@ -10,8 +10,11 @@ import {
   deleteRouter,
   getRouterStatus,
   importFromRouter,
+  vpnSetup,
+  vpnActivate,
   type RouterType,
   type RouterStatus,
+  type VpnSetupResponse,
 } from '../api/routers'
 import { scanNetwork } from '../api/network'
 
@@ -55,6 +58,71 @@ const showScanModal = ref(false)
 const scanSubnet = ref('192.168.88.0/24')
 const scanning = ref(false)
 const scanResults = ref<Array<{ ip: string; mac?: string; hostname?: string; open_ports?: number[] }>>([])
+
+// VPN Setup
+const showVpnModal = ref(false)
+const vpnStep = ref<1 | 2 | 3>(1)
+const vpnLoading = ref(false)
+const vpnRouterId = ref('')
+const vpnRouterName = ref('')
+const vpnData = ref<VpnSetupResponse | null>(null)
+const vpnClientKey = ref('')
+const vpnClientLan = ref('')
+const vpnError = ref('')
+const vpnSuccess = ref('')
+const vpnCopied = ref(false)
+
+async function startVpnSetup(router: RouterType) {
+  vpnRouterId.value = router.id
+  vpnRouterName.value = router.name
+  vpnStep.value = 1
+  vpnData.value = null
+  vpnClientKey.value = ''
+  vpnClientLan.value = ''
+  vpnError.value = ''
+  vpnSuccess.value = ''
+  vpnCopied.value = false
+  showVpnModal.value = true
+  vpnLoading.value = true
+  try {
+    const { data } = await vpnSetup(router.id)
+    vpnData.value = data
+  } catch (e: any) {
+    vpnError.value = e.response?.data?.detail || 'Failed to generate VPN setup'
+  } finally {
+    vpnLoading.value = false
+  }
+}
+
+function copyVpnScript() {
+  if (vpnData.value?.script) {
+    navigator.clipboard.writeText(vpnData.value.script)
+    vpnCopied.value = true
+    setTimeout(() => vpnCopied.value = false, 2000)
+  }
+}
+
+async function activateVpn() {
+  if (!vpnClientKey.value.trim()) {
+    vpnError.value = 'Please paste your MikroTik public key'
+    return
+  }
+  vpnError.value = ''
+  vpnLoading.value = true
+  try {
+    const { data } = await vpnActivate(vpnRouterId.value, {
+      public_key: vpnClientKey.value.trim(),
+      client_lan: vpnClientLan.value.trim(),
+    })
+    vpnSuccess.value = data.message
+    vpnStep.value = 3
+    await loadRouters()
+  } catch (e: any) {
+    vpnError.value = e.response?.data?.detail || 'Failed to activate VPN'
+  } finally {
+    vpnLoading.value = false
+  }
+}
 
 async function loadRouters() {
   loading.value = true
@@ -288,6 +356,7 @@ onMounted(loadRouters)
                 <div class="flex items-center justify-end gap-2">
                   <button @click="viewStatus(r)" class="text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">Status</button>
                   <button @click="askImport(r)" class="text-xs font-medium text-green-600 hover:text-green-700 transition-colors">Import</button>
+                  <button @click="startVpnSetup(r)" class="text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors">VPN</button>
                   <button @click="openEdit(r)" class="text-xs font-medium text-primary hover:text-primary-hover transition-colors">Edit</button>
                   <button @click="askDelete(r.id)" class="text-xs font-medium text-red-600 hover:text-red-700 transition-colors">Delete</button>
                 </div>
@@ -554,6 +623,79 @@ onMounted(loadRouters)
           class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
         >
           Close
+        </button>
+      </template>
+    </Modal>
+
+    <!-- VPN Setup Modal -->
+    <Modal :open="showVpnModal" :title="'VPN Setup \u2014 ' + vpnRouterName" size="lg" @close="showVpnModal = false">
+      <div class="space-y-4">
+        <!-- Steps indicator -->
+        <div class="flex items-center gap-2 text-xs font-medium">
+          <span :class="vpnStep >= 1 ? 'text-primary' : 'text-gray-400'">1. Copy Script</span>
+          <svg class="w-4 h-4 text-gray-300" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>
+          <span :class="vpnStep >= 2 ? 'text-primary' : 'text-gray-400'">2. Enter Key</span>
+          <svg class="w-4 h-4 text-gray-300" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"/></svg>
+          <span :class="vpnStep >= 3 ? 'text-primary' : 'text-gray-400'">3. Connected</span>
+        </div>
+
+        <!-- Loading -->
+        <div v-if="vpnLoading && !vpnData" class="flex items-center justify-center py-8">
+          <svg class="w-8 h-8 animate-spin text-primary" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+        </div>
+
+        <!-- Step 1: Copy Script -->
+        <div v-if="vpnStep === 1 && vpnData">
+          <p class="text-sm text-gray-600 mb-3">Paste this script into your MikroTik terminal (Winbox Terminal tab or SSH):</p>
+          <div class="relative rounded-xl bg-gray-900 p-4 overflow-x-auto">
+            <pre class="text-sm text-green-400 font-mono whitespace-pre">{{ vpnData.script }}</pre>
+            <button @click="copyVpnScript" class="absolute top-2 right-2 px-2.5 py-1 text-xs rounded-lg transition-colors" :class="vpnCopied ? 'bg-green-600 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'">
+              {{ vpnCopied ? 'Copied!' : 'Copy' }}
+            </button>
+          </div>
+          <div class="mt-3 rounded-lg bg-blue-50 border border-blue-200 p-3">
+            <p class="text-sm text-blue-700">After pasting, run <code class="bg-blue-100 px-1 rounded">/interface/wireguard/print</code> and copy the <strong>Public Key</strong> shown.</p>
+          </div>
+        </div>
+
+        <!-- Step 2: Enter Public Key -->
+        <div v-if="vpnStep === 2">
+          <p class="text-sm text-gray-600 mb-3">Paste the <strong>Public Key</strong> from your MikroTik WireGuard interface:</p>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">MikroTik Public Key</label>
+            <input v-model="vpnClientKey" type="text" placeholder="e.g. VSs6joEGtYn6ZQJJiqSepzR+H3xK82f37H1EqUUeE2k=" class="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+          </div>
+          <div class="mt-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Router LAN Subnet <span class="text-gray-400 font-normal">(optional — e.g. 192.168.1.0/24)</span></label>
+            <input v-model="vpnClientLan" type="text" placeholder="192.168.1.0/24" class="w-full px-3 py-2.5 rounded-lg border border-gray-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+          </div>
+        </div>
+
+        <!-- Step 3: Connected -->
+        <div v-if="vpnStep === 3">
+          <div class="rounded-lg bg-green-50 border border-green-200 p-4 text-center">
+            <svg class="w-12 h-12 text-green-500 mx-auto mb-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd"/></svg>
+            <p class="text-lg font-semibold text-green-800">VPN Tunnel Activated!</p>
+            <p class="text-sm text-green-700 mt-1">{{ vpnSuccess }}</p>
+            <p class="text-sm text-gray-600 mt-2">Your router URL has been updated to <code class="bg-green-100 px-1.5 py-0.5 rounded font-mono text-green-800">http://{{ vpnData?.tunnel_ip }}</code></p>
+          </div>
+        </div>
+
+        <!-- Error -->
+        <div v-if="vpnError" class="rounded-lg bg-red-50 border border-red-200 p-3">
+          <p class="text-sm text-red-700">{{ vpnError }}</p>
+        </div>
+      </div>
+
+      <template #footer>
+        <button @click="showVpnModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
+          {{ vpnStep === 3 ? 'Done' : 'Cancel' }}
+        </button>
+        <button v-if="vpnStep === 1 && vpnData" @click="vpnStep = 2; vpnError = ''" class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-hover">
+          Next — I've pasted the script
+        </button>
+        <button v-if="vpnStep === 2" @click="activateVpn" :disabled="vpnLoading || !vpnClientKey.trim()" class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-hover disabled:opacity-50">
+          {{ vpnLoading ? 'Activating...' : 'Activate VPN' }}
         </button>
       </template>
     </Modal>

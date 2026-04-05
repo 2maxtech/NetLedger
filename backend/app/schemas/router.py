@@ -33,6 +33,8 @@ class RouterResponse(BaseModel):
     created_at: datetime
     maintenance_mode: bool = False
     maintenance_message: str | None = None
+    wg_tunnel_ip: str | None = None
+    wg_peer_public_key: str | None = None
 
     model_config = {"from_attributes": True}
 
