@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
 import dayjs from 'dayjs'
-import { getInvoices, generateInvoices, updateInvoice, downloadInvoicePdf, deleteInvoice, type Invoice } from '../../api/billing'
+import { getInvoices, generateInvoices, downloadInvoicePdf, deleteInvoice, type Invoice } from '../../api/billing'
 import { getCustomers, type Customer } from '../../api/customers'
 import StatusBadge from '../../components/common/StatusBadge.vue'
 import Modal from '../../components/common/Modal.vue'
@@ -31,11 +31,6 @@ const customerResults = ref<Customer[]>([])
 const selectedCustomer = ref<Customer | null>(null)
 const customerSearchLoading = ref(false)
 const showCustomerDropdown = ref(false)
-
-// Void confirm
-const showVoidConfirm = ref(false)
-const voidTarget = ref<Invoice | null>(null)
-const voidLoading = ref(false)
 
 // Delete confirm
 const showDeleteConfirm = ref(false)
@@ -124,26 +119,6 @@ async function handleGenerateAll() {
   }
 }
 
-function openVoidConfirm(inv: Invoice) {
-  voidTarget.value = inv
-  showVoidConfirm.value = true
-}
-
-async function handleVoid() {
-  if (!voidTarget.value) return
-  voidLoading.value = true
-  try {
-    await updateInvoice(voidTarget.value.id, { status: 'void' })
-    showVoidConfirm.value = false
-    voidTarget.value = null
-    fetchInvoices()
-  } catch (e) {
-    console.error('Void failed', e)
-  } finally {
-    voidLoading.value = false
-  }
-}
-
 async function handleDownloadPdf(inv: Invoice) {
   try {
     const { data } = await downloadInvoicePdf(inv.id)
@@ -225,7 +200,6 @@ onMounted(fetchInvoices)
             <option value="pending">Pending</option>
             <option value="paid">Paid</option>
             <option value="overdue">Overdue</option>
-            <option value="void">Void</option>
           </select>
         </div>
         <div>
@@ -305,14 +279,6 @@ onMounted(fetchInvoices)
                     class="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                   >
                     <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd" /></svg>
-                  </button>
-                  <button
-                    v-if="inv.status !== 'void' && inv.status !== 'paid'"
-                    @click="openVoidConfirm(inv)"
-                    title="Void invoice"
-                    class="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                  >
-                    <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
                   </button>
                   <button
                     v-if="inv.status !== 'paid'"
@@ -400,24 +366,12 @@ onMounted(fetchInvoices)
       @cancel="showGenerateAllConfirm = false"
     />
 
-    <!-- Void Confirm -->
-    <ConfirmDialog
-      :open="showVoidConfirm"
-      title="Void Invoice"
-      :message="`Are you sure you want to void the invoice for ${voidTarget?.customer_name}? This action cannot be undone.`"
-      confirm-text="Void Invoice"
-      :danger="true"
-      :loading="voidLoading"
-      @confirm="handleVoid"
-      @cancel="showVoidConfirm = false; voidTarget = null"
-    />
-
     <!-- Delete Confirm -->
     <ConfirmDialog
       :open="showDeleteConfirm"
       title="Delete Invoice"
-      :message="`Are you sure you want to permanently delete the invoice for ${deleteTarget?.customer_name}? This will also delete any associated payments.`"
-      confirm-text="Delete Invoice"
+      :message="`Permanently delete invoice for ${deleteTarget?.customer_name} (${formatCurrency(deleteTarget?.amount || 0)})? This cannot be undone.`"
+      confirm-text="Delete"
       :danger="true"
       :loading="deleteLoading"
       @confirm="handleDelete"
