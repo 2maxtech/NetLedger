@@ -55,6 +55,10 @@ export function downloadInvoicePdf(id: string) {
   return api.get(`/billing/invoices/${id}/pdf`, { responseType: 'blob' })
 }
 
+export function deleteInvoice(id: string) {
+  return api.delete(`/billing/invoices/${id}`)
+}
+
 export function getPayments(params?: { page?: number; size?: number; from_date?: string; to_date?: string }) {
   return api.get<{ items: Payment[]; total: number }>('/billing/payments', { params })
 }

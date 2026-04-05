@@ -187,6 +187,32 @@ async def update_invoice(
     return _invoice_to_response(invoice)
 
 
+@router.delete("/invoices/{invoice_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_invoice(
+    invoice_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.admin, UserRole.billing)),
+    tenant_id: str = Depends(get_tenant_id),
+):
+    tid = uuid.UUID(tenant_id)
+    result = await db.execute(select(Invoice).where(Invoice.id == invoice_id, Invoice.owner_id == tid))
+    invoice = result.scalar_one_or_none()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    if invoice.status == InvoiceStatus.paid:
+        raise HTTPException(status_code=400, detail="Cannot delete a paid invoice")
+
+    # Delete related payments first
+    await db.execute(
+        select(Payment).where(Payment.invoice_id == invoice.id)
+    )
+    from sqlalchemy import delete as sql_delete
+    await db.execute(sql_delete(Payment).where(Payment.invoice_id == invoice.id))
+    await db.delete(invoice)
+    await db.flush()
+    await log_action(db, current_user.id, "invoice.delete", "invoice", invoice_id, details=f"customer={invoice.customer_id} amount={invoice.amount}", owner_id=tid)
+
+
 # --- Payment endpoints ---
 
 @router.get("/payments", response_model=PaymentListResponse)
