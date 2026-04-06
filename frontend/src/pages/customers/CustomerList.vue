@@ -55,6 +55,8 @@ const editError = ref('')
 const showDeleteConfirm = ref(false)
 const deleteLoading = ref(false)
 const deleteTarget = ref<Customer | null>(null)
+const deletePassword = ref('')
+const deleteError = ref('')
 
 // Import from MikroTik
 const showImportModal = ref(false)
@@ -233,19 +235,26 @@ async function handleEdit() {
 
 function confirmDelete(customer: Customer) {
   deleteTarget.value = customer
+  deletePassword.value = ''
+  deleteError.value = ''
   showDeleteConfirm.value = true
 }
 
 async function handleDelete() {
   if (!deleteTarget.value) return
+  if (!deletePassword.value) {
+    deleteError.value = 'Please enter your password to confirm.'
+    return
+  }
+  deleteError.value = ''
   deleteLoading.value = true
   try {
-    await deleteCustomer(deleteTarget.value.id)
+    await deleteCustomer(deleteTarget.value.id, deletePassword.value)
     showDeleteConfirm.value = false
     deleteTarget.value = null
     await fetchCustomers()
   } catch (e: any) {
-    console.error('Failed to delete customer', e)
+    deleteError.value = e.response?.data?.detail || 'Failed to delete customer'
   } finally {
     deleteLoading.value = false
   }
@@ -711,16 +720,43 @@ onMounted(() => {
     </Modal>
 
     <!-- Delete Confirm -->
-    <ConfirmDialog
-      :open="showDeleteConfirm"
-      title="Delete Customer"
-      :message="`Are you sure you want to delete ${deleteTarget?.full_name}? This action cannot be undone and will remove all associated PPPoE sessions and billing records.`"
-      confirm-text="Delete"
-      danger
-      :loading="deleteLoading"
-      @confirm="handleDelete"
-      @cancel="showDeleteConfirm = false"
-    />
+    <Modal :open="showDeleteConfirm" title="Delete Customer" @close="showDeleteConfirm = false">
+      <div class="space-y-4">
+        <div class="rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+          <p class="text-sm text-red-700">
+            This will <strong>permanently delete {{ deleteTarget?.full_name }}</strong> and remove the PPPoE secret from MikroTik. All invoices, payments, and records will be lost. This cannot be undone.
+          </p>
+        </div>
+        <div v-if="deleteError" class="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          {{ deleteError }}
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Enter your password to confirm</label>
+          <input
+            v-model="deletePassword"
+            type="password"
+            placeholder="Your admin password"
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400 transition-colors"
+            @keyup.enter="handleDelete"
+          />
+        </div>
+        <div class="flex justify-end gap-3 pt-2">
+          <button
+            @click="showDeleteConfirm = false"
+            class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            @click="handleDelete"
+            :disabled="deleteLoading || !deletePassword"
+            class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ deleteLoading ? 'Deleting...' : 'Delete Customer' }}
+          </button>
+        </div>
+      </div>
+    </Modal>
 
     <!-- Import from MikroTik Modal -->
     <Modal :open="showImportModal" title="Import from MikroTik" size="md" @close="showImportModal = false">
