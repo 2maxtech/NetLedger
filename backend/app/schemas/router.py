@@ -51,6 +51,7 @@ class RouterStatusResponse(BaseModel):
     active_sessions: int = 0
     version: str | None = None
     error: str | None = None
+    interfaces: list[dict] | None = None
 
 
 class AreaCreate(BaseModel):

@@ -139,7 +139,7 @@ async def get_router_status(
                     })
         except Exception:
             pass
-        resp = RouterStatusResponse(
+        return RouterStatusResponse(
             id=r.id,
             name=r.name,
             connected=True,
@@ -150,10 +150,8 @@ async def get_router_status(
             total_memory=int(resources.get("total-memory", 0)),
             active_sessions=len(sessions),
             version=resources.get("version", ""),
+            interfaces=interfaces,
         )
-        resp_dict = resp.model_dump()
-        resp_dict["interfaces"] = interfaces
-        return resp_dict
     except Exception as e:
         error_msg = str(e)
         if "timed out" in error_msg.lower() or "connection refused" in error_msg.lower():
