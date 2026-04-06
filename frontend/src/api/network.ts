@@ -90,3 +90,19 @@ export function getHotspotUsers(routerId?: string) {
 export function getHotspotSessions(routerId?: string) {
   return api.get('/network/hotspot/sessions', { params: routerId ? { router_id: routerId } : {} })
 }
+
+export function getHotspotProfiles(routerId: string) {
+  return api.get('/network/hotspot/profiles', { params: { router_id: routerId } })
+}
+
+export function createHotspotProfile(data: { router_id: string; name: string; rate_limit?: string; session_timeout?: string; shared_users?: string; address_pool?: string }) {
+  return api.post('/network/hotspot/profiles', data)
+}
+
+export function updateHotspotProfile(profileId: string, data: { router_id: string; name?: string; rate_limit?: string; session_timeout?: string; shared_users?: string; address_pool?: string }) {
+  return api.patch(`/network/hotspot/profiles/${profileId}`, data)
+}
+
+export function deleteHotspotProfile(profileId: string, routerId: string) {
+  return api.delete(`/network/hotspot/profiles/${profileId}`, { params: { router_id: routerId } })
+}

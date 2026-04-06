@@ -483,6 +483,109 @@ async def scan_network(
     return {"found": found, "scanned": len(hosts), "subnet": subnet}
 
 
+@router.get("/hotspot/profiles")
+async def get_hotspot_profiles(
+    router_id: uuid.UUID = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    tenant_id: str = Depends(get_tenant_id),
+):
+    from app.models.router import Router
+    tid = uuid.UUID(tenant_id)
+    result = await db.execute(select(Router).where(Router.id == router_id, Router.owner_id == tid))
+    r = result.scalar_one_or_none()
+    if not r:
+        return {"profiles": [], "error": "Router not found"}
+    client = get_mikrotik_client(str(r.id), r.url, r.username, r.password)
+    try:
+        resp = await client._request("GET", "ip/hotspot/user/profile")
+        return {"profiles": resp.json()}
+    except Exception as e:
+        return {"profiles": [], "error": str(e)}
+
+
+@router.post("/hotspot/profiles")
+async def create_hotspot_profile(
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    tenant_id: str = Depends(get_tenant_id),
+):
+    from app.models.router import Router
+    tid = uuid.UUID(tenant_id)
+    router_id = body.get("router_id")
+    if not router_id:
+        raise HTTPException(status_code=400, detail="router_id required")
+    result = await db.execute(select(Router).where(Router.id == router_id, Router.owner_id == tid))
+    r = result.scalar_one_or_none()
+    if not r:
+        raise HTTPException(status_code=404, detail="Router not found")
+    client = get_mikrotik_client(str(r.id), r.url, r.username, r.password)
+    payload = {"name": body["name"]}
+    if body.get("rate_limit"):
+        payload["rate-limit"] = body["rate_limit"]
+    if body.get("session_timeout"):
+        payload["session-timeout"] = body["session_timeout"]
+    if body.get("shared_users"):
+        payload["shared-users"] = str(body["shared_users"])
+    if body.get("address_pool"):
+        payload["address-pool"] = body["address_pool"]
+    resp = await client._request("PUT", "ip/hotspot/user/profile", json=payload)
+    return resp.json()
+
+
+@router.patch("/hotspot/profiles/{profile_id}")
+async def update_hotspot_profile(
+    profile_id: str,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    tenant_id: str = Depends(get_tenant_id),
+):
+    from app.models.router import Router
+    tid = uuid.UUID(tenant_id)
+    router_id = body.get("router_id")
+    if not router_id:
+        raise HTTPException(status_code=400, detail="router_id required")
+    result = await db.execute(select(Router).where(Router.id == router_id, Router.owner_id == tid))
+    r = result.scalar_one_or_none()
+    if not r:
+        raise HTTPException(status_code=404, detail="Router not found")
+    client = get_mikrotik_client(str(r.id), r.url, r.username, r.password)
+    payload = {}
+    if "name" in body:
+        payload["name"] = body["name"]
+    if "rate_limit" in body:
+        payload["rate-limit"] = body["rate_limit"]
+    if "session_timeout" in body:
+        payload["session-timeout"] = body["session_timeout"]
+    if "shared_users" in body:
+        payload["shared-users"] = str(body["shared_users"])
+    if "address_pool" in body:
+        payload["address-pool"] = body["address_pool"]
+    resp = await client._request("PATCH", f"ip/hotspot/user/profile/{profile_id}", json=payload)
+    return resp.json()
+
+
+@router.delete("/hotspot/profiles/{profile_id}")
+async def delete_hotspot_profile(
+    profile_id: str,
+    router_id: uuid.UUID = Query(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    tenant_id: str = Depends(get_tenant_id),
+):
+    from app.models.router import Router
+    tid = uuid.UUID(tenant_id)
+    result = await db.execute(select(Router).where(Router.id == router_id, Router.owner_id == tid))
+    r = result.scalar_one_or_none()
+    if not r:
+        raise HTTPException(status_code=404, detail="Router not found")
+    client = get_mikrotik_client(str(r.id), r.url, r.username, r.password)
+    await client._request("DELETE", f"ip/hotspot/user/profile/{profile_id}")
+    return {"status": "deleted"}
+
+
 @router.get("/hotspot/users")
 async def get_hotspot_users(
     router_id: uuid.UUID = Query(...),
