@@ -3,6 +3,7 @@ import app.models  # noqa: F401 — ensures all models are registered in SQLAlch
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import text
 
 from app.api.admin.customers import router as customers_router
 from app.api.admin.plans import router as plans_router
@@ -25,15 +26,23 @@ from app.api.admin.system import router as system_router
 from app.api.setup import router as setup_router
 from app.core.config import settings
 
+from app.core.rate_limit import RateLimitMiddleware
+
 app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_PREFIX}/openapi.json")
+
+# Build allowed origins based on deployment mode
+_allowed_origins = ["https://netl.2max.tech", "http://localhost", "http://localhost:5173"]
+if settings.DEPLOYMENT_MODE == "onpremise":
+    _allowed_origins = ["*"]  # On-premise: admin controls their own network
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RateLimitMiddleware, rate_limit=10, window=60)  # 10 attempts per minute on auth
 
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(plans_router, prefix=settings.API_V1_PREFIX)
@@ -77,4 +86,34 @@ async def latest_release():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "service": settings.PROJECT_NAME}
+    """Health check endpoint for monitoring services (UptimeRobot, etc.)."""
+    from app.core.database import engine
+    from datetime import datetime, timezone
+
+    health = {
+        "status": "ok",
+        "service": settings.PROJECT_NAME,
+        "version": settings.APP_VERSION,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+    # Check database connectivity
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        health["database"] = "ok"
+    except Exception:
+        health["database"] = "error"
+        health["status"] = "degraded"
+
+    # Check Redis connectivity
+    try:
+        import redis as redis_lib
+        r = redis_lib.from_url(settings.REDIS_URL, socket_timeout=2)
+        r.ping()
+        health["redis"] = "ok"
+    except Exception:
+        health["redis"] = "error"
+        health["status"] = "degraded"
+
+    return health
