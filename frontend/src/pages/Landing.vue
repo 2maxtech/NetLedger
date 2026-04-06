@@ -15,49 +15,49 @@ onMounted(() => {
   <div class="min-h-screen bg-white">
     <!-- Navbar -->
     <nav class="fixed top-0 w-full bg-white/80 backdrop-blur-md border-b border-gray-100 z-50">
-      <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <img src="/logo-2.png" class="w-9 h-9" alt="NetLedger" />
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+        <div class="flex items-center gap-2 sm:gap-3">
+          <img src="/logo-2.png" class="w-7 h-7 sm:w-9 sm:h-9" alt="NetLedger" />
           <div class="flex flex-col -space-y-1">
-            <span class="text-xl font-bold text-gray-900">NetLedger</span>
-            <span class="text-[10px] text-gray-400 font-medium">by 2max.tech</span>
+            <span class="text-base sm:text-xl font-bold text-gray-900">NetLedger</span>
+            <span class="text-[9px] sm:text-[10px] text-gray-400 font-medium">by 2max.tech</span>
           </div>
         </div>
-        <div class="flex items-center gap-3">
-          <router-link to="/register" class="px-5 py-2 text-sm font-medium text-primary border border-primary hover:bg-primary/5 rounded-lg transition-colors">
+        <div class="flex items-center gap-2 sm:gap-3">
+          <router-link to="/register" class="hidden sm:inline-flex px-5 py-2 text-sm font-medium text-primary border border-primary hover:bg-primary/5 rounded-lg transition-colors">
             Register
           </router-link>
-          <router-link to="/login" class="px-5 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors">
-            Admin Login
+          <router-link to="/login" class="px-3 sm:px-5 py-1.5 sm:py-2 text-xs sm:text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg transition-colors">
+            Login
           </router-link>
         </div>
       </div>
     </nav>
 
     <!-- Hero -->
-    <section class="pt-32 pb-20 px-6">
-      <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+    <section class="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6">
+      <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
         <div>
-          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 text-green-600 text-xs font-medium mb-6">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 text-green-600 text-xs font-medium mb-4 sm:mb-6">
             <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
             Free During Beta
           </div>
-          <h1 class="text-5xl font-bold text-gray-900 leading-tight">
+          <h1 class="text-3xl sm:text-5xl font-bold text-gray-900 leading-tight">
             Manage your ISP<br />
             <span class="text-primary">with confidence</span>
           </h1>
-          <p class="text-lg text-gray-500 mt-6 leading-relaxed max-w-lg">
+          <p class="text-base sm:text-lg text-gray-500 mt-4 sm:mt-6 leading-relaxed max-w-lg">
             NetLedger is a complete billing, subscriber management, and MikroTik integration platform built for Internet Service Providers.
           </p>
-          <div class="flex items-center gap-4 mt-8">
-            <router-link to="/register" class="px-6 py-3 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5">
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 mt-6 sm:mt-8">
+            <router-link to="/register" class="px-6 py-3 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 text-center">
               Join the Beta — It's Free
             </router-link>
-            <a href="#features" class="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+            <a href="#features" class="px-6 py-3 text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors text-center">
               Learn More
             </a>
           </div>
-          <div class="flex items-center gap-6 mt-10 text-sm text-gray-400">
+          <div class="flex flex-wrap items-center gap-4 sm:gap-6 mt-8 sm:mt-10 text-sm text-gray-400">
             <div class="flex items-center gap-2">
               <svg class="w-4 h-4 text-green-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
               MikroTik Ready
@@ -123,11 +123,11 @@ onMounted(() => {
     </section>
 
     <!-- Features -->
-    <section id="features" class="py-20 px-6 bg-gray-50">
+    <section id="features" class="py-12 sm:py-20 px-4 sm:px-6 bg-gray-50">
       <div class="max-w-6xl mx-auto">
-        <div class="text-center mb-14">
-          <h2 class="text-3xl font-bold text-gray-900">Everything you need to run your ISP</h2>
-          <p class="text-gray-500 mt-3 max-w-2xl mx-auto">From subscriber provisioning to billing automation, NetLedger handles it all with native MikroTik integration.</p>
+        <div class="text-center mb-10 sm:mb-14">
+          <h2 class="text-2xl sm:text-3xl font-bold text-gray-900">Everything you need to run your ISP</h2>
+          <p class="text-gray-500 mt-3 max-w-2xl mx-auto text-sm sm:text-base">From subscriber provisioning to billing automation, NetLedger handles it all with native MikroTik integration.</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <!-- Feature cards -->
@@ -143,10 +143,10 @@ onMounted(() => {
     </section>
 
     <!-- How It Works -->
-    <section class="py-20 px-6">
+    <section class="py-12 sm:py-20 px-4 sm:px-6">
       <div class="max-w-6xl mx-auto">
-        <div class="text-center mb-14">
-          <h2 class="text-3xl font-bold text-gray-900">How it works</h2>
+        <div class="text-center mb-10 sm:mb-14">
+          <h2 class="text-2xl sm:text-3xl font-bold text-gray-900">How it works</h2>
           <p class="text-gray-500 mt-3">Get up and running in minutes</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -162,11 +162,11 @@ onMounted(() => {
     </section>
 
     <!-- Deployment Options -->
-    <section class="py-20 px-6">
+    <section class="py-12 sm:py-20 px-4 sm:px-6">
       <div class="max-w-6xl mx-auto">
-        <div class="text-center mb-14">
-          <h2 class="text-3xl font-bold text-gray-900">Choose your deployment</h2>
-          <p class="text-gray-500 mt-3">Use our cloud platform or install on your own server</p>
+        <div class="text-center mb-10 sm:mb-14">
+          <h2 class="text-2xl sm:text-3xl font-bold text-gray-900">Choose your deployment</h2>
+          <p class="text-gray-500 mt-3 text-sm sm:text-base">Use our cloud platform or install on your own server</p>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
           <div class="rounded-xl border-2 border-primary bg-primary/5 p-8">
@@ -206,15 +206,15 @@ onMounted(() => {
     </section>
 
     <!-- CTA -->
-    <section class="py-20 px-6 bg-gradient-to-br from-sidebar to-gray-900">
+    <section class="py-12 sm:py-20 px-4 sm:px-6 bg-gradient-to-br from-sidebar to-gray-900">
       <div class="max-w-3xl mx-auto text-center">
-        <h2 class="text-3xl font-bold text-white">Ready to streamline your ISP operations?</h2>
-        <p class="text-gray-400 mt-4 text-lg">Join the beta and get full access to every feature — completely free while we're in beta testing.</p>
-        <div class="flex items-center justify-center gap-4 mt-8">
-          <router-link to="/register" class="px-8 py-3 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5">
+        <h2 class="text-2xl sm:text-3xl font-bold text-white">Ready to streamline your ISP operations?</h2>
+        <p class="text-gray-400 mt-4 text-base sm:text-lg">Join the beta and get full access to every feature — completely free while we're in beta testing.</p>
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 mt-8">
+          <router-link to="/register" class="px-8 py-3 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 text-center">
             Join the Beta — It's Free
           </router-link>
-          <router-link to="/login" class="px-8 py-3 text-sm font-semibold text-white border border-white/20 hover:bg-white/10 rounded-xl transition-colors">
+          <router-link to="/login" class="px-8 py-3 text-sm font-semibold text-white border border-white/20 hover:bg-white/10 rounded-xl transition-colors text-center">
             Admin Login
           </router-link>
         </div>
@@ -222,7 +222,7 @@ onMounted(() => {
     </section>
 
     <!-- Footer -->
-    <footer class="py-10 px-6 border-t border-gray-100">
+    <footer class="py-8 sm:py-10 px-4 sm:px-6 border-t border-gray-100">
       <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         <div class="flex items-center gap-3">
           <img src="/logo-2.png" class="w-6 h-6" />
