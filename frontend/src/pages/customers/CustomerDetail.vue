@@ -9,7 +9,9 @@ import {
   reconnectCustomer,
   throttleCustomer,
   changePlan,
+  getCustomerHistory,
   type Customer,
+  type HistoryEvent,
 } from '../../api/customers'
 import { getPlans, type Plan } from '../../api/plans'
 import { getRouters, getAreas, type RouterType, type AreaType } from '../../api/routers'
@@ -26,7 +28,7 @@ const customerId = route.params.id as string
 // Data
 const customer = ref<Customer | null>(null)
 const loading = ref(true)
-const activeTab = ref<'overview' | 'billing'>('overview')
+const activeTab = ref<'overview' | 'billing' | 'history'>('overview')
 
 // Dropdown data
 const plans = ref<Plan[]>([])
@@ -39,6 +41,10 @@ const invoicesTotal = ref(0)
 const invoicesPage = ref(1)
 const invoicesPageSize = 10
 const invoicesLoading = ref(false)
+
+// History tab
+const historyEvents = ref<HistoryEvent[]>([])
+const historyLoading = ref(false)
 
 // Edit modal
 const showEditModal = ref(false)
@@ -126,6 +132,18 @@ async function fetchInvoices() {
     console.error('Failed to fetch invoices', e)
   } finally {
     invoicesLoading.value = false
+  }
+}
+
+async function fetchHistory() {
+  historyLoading.value = true
+  try {
+    const { data } = await getCustomerHistory(customerId)
+    historyEvents.value = data.events
+  } catch (e) {
+    console.error('Failed to fetch history', e)
+  } finally {
+    historyLoading.value = false
   }
 }
 
@@ -430,6 +448,17 @@ onMounted(async () => {
           >
             Billing
           </button>
+          <button
+            @click="activeTab = 'history'; fetchHistory()"
+            :class="[
+              'pb-3 text-sm font-medium border-b-2 transition-colors',
+              activeTab === 'history'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            ]"
+          >
+            History
+          </button>
         </nav>
       </div>
 
@@ -569,6 +598,65 @@ onMounted(async () => {
           :total="invoicesTotal"
           @update:page="invoicesPage = $event; fetchInvoices()"
         />
+      </div>
+
+      <!-- History Tab -->
+      <div v-if="activeTab === 'history'" class="space-y-4">
+        <div class="rounded-xl bg-white shadow-sm border border-gray-100 p-6">
+          <!-- Loading -->
+          <div v-if="historyLoading" class="space-y-4">
+            <div v-for="i in 5" :key="i" class="flex gap-4">
+              <div class="w-2 h-2 mt-2 rounded-full bg-gray-200 animate-pulse shrink-0" />
+              <div class="flex-1 space-y-2">
+                <div class="h-4 w-48 bg-gray-100 rounded animate-pulse" />
+                <div class="h-3 w-32 bg-gray-50 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty -->
+          <div v-else-if="!historyEvents.length" class="text-center py-12">
+            <svg class="w-10 h-10 text-gray-300 mx-auto mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p class="text-sm text-gray-400">No history yet</p>
+          </div>
+
+          <!-- Timeline -->
+          <div v-else class="relative">
+            <div class="absolute left-[5px] top-2 bottom-2 w-px bg-gray-200" />
+            <div v-for="event in historyEvents" :key="event.ref_id + event.date" class="relative flex gap-4 pb-5 last:pb-0">
+              <!-- Dot -->
+              <div
+                :class="[
+                  'w-[11px] h-[11px] mt-1.5 rounded-full border-2 shrink-0 z-10',
+                  event.type === 'payment' || event.type === 'invoice_paid'
+                    ? 'bg-green-500 border-green-200'
+                    : event.type === 'enforcement' && event.status === 'disconnected'
+                    ? 'bg-red-500 border-red-200'
+                    : event.type === 'enforcement' && event.status === 'suspended'
+                    ? 'bg-amber-500 border-amber-200'
+                    : event.type === 'enforcement' && event.status === 'active'
+                    ? 'bg-green-500 border-green-200'
+                    : event.type === 'invoice' && event.status === 'overdue'
+                    ? 'bg-red-400 border-red-200'
+                    : event.type === 'notification'
+                    ? 'bg-blue-400 border-blue-200'
+                    : 'bg-gray-400 border-gray-200'
+                ]"
+              />
+              <!-- Content -->
+              <div class="flex-1 min-w-0">
+                <div class="flex items-start justify-between gap-2">
+                  <p class="text-sm font-medium text-gray-900">{{ event.title }}</p>
+                  <StatusBadge v-if="event.type !== 'notification'" :status="event.status" />
+                </div>
+                <p v-if="event.detail" class="text-xs text-gray-500 mt-0.5">{{ event.detail }}</p>
+                <p class="text-xs text-gray-400 mt-1">{{ formatDate(event.date) }} {{ new Date(event.date).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </template>
 

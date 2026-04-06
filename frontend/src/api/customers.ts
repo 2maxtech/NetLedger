@@ -61,3 +61,16 @@ export function throttleCustomer(id: string) {
 export function changePlan(id: string, planId: string) {
   return api.post(`/customers/${id}/change-plan`, { plan_id: planId })
 }
+
+export interface HistoryEvent {
+  type: string
+  date: string
+  title: string
+  detail: string | null
+  status: string
+  ref_id: string
+}
+
+export function getCustomerHistory(id: string) {
+  return api.get<{ events: HistoryEvent[]; total: number }>(`/customers/${id}/history`)
+}

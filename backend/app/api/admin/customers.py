@@ -11,6 +11,9 @@ from app.core.dependencies import get_current_user
 from app.core.tenant import get_tenant_id
 from app.models.customer import Customer, CustomerStatus
 from app.models.disconnect_log import DisconnectAction, DisconnectLog, DisconnectReason
+from app.models.invoice import Invoice
+from app.models.payment import Payment
+from app.models.notification import Notification
 from app.models.user import User
 from app.schemas.customer import CustomerCreate, CustomerListResponse, CustomerResponse, CustomerUpdate
 from app.services.audit import log_action
@@ -332,3 +335,95 @@ async def change_plan(
 
     await log_action(db, current_user.id, "customer.change_plan", "customer", customer.id, details=f"new_plan={new_plan.name}", owner_id=tid)
     return {"status": "plan_changed", "new_plan": new_plan.name, "mikrotik": mt_result}
+
+
+@router.get("/{customer_id}/history")
+async def get_customer_history(
+    customer_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    tenant_id: str = Depends(get_tenant_id),
+):
+    """Get unified timeline of events for a customer."""
+    tid = uuid.UUID(tenant_id)
+    result = await db.execute(select(Customer).where(Customer.id == customer_id, Customer.owner_id == tid))
+    customer = result.scalar_one_or_none()
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+
+    events = []
+
+    # Invoices
+    inv_result = await db.execute(
+        select(Invoice).where(Invoice.customer_id == customer_id).order_by(Invoice.issued_at.desc())
+    )
+    for inv in inv_result.scalars().all():
+        events.append({
+            "type": "invoice",
+            "date": inv.issued_at.isoformat(),
+            "title": f"Invoice generated — ₱{inv.amount:,.2f}",
+            "detail": f"Plan: {inv.plan.name}" if inv.plan else None,
+            "status": inv.status.value,
+            "ref_id": str(inv.id),
+        })
+        if inv.status.value == "paid" and inv.paid_at:
+            events.append({
+                "type": "invoice_paid",
+                "date": inv.paid_at.isoformat(),
+                "title": f"Invoice paid — ₱{inv.amount:,.2f}",
+                "detail": None,
+                "status": "paid",
+                "ref_id": str(inv.id),
+            })
+
+    # Payments
+    pay_result = await db.execute(
+        select(Payment).where(
+            Payment.invoice_id.in_(select(Invoice.id).where(Invoice.customer_id == customer_id))
+        ).order_by(Payment.received_at.desc())
+    )
+    for p in pay_result.scalars().all():
+        events.append({
+            "type": "payment",
+            "date": p.received_at.isoformat(),
+            "title": f"Payment received — ₱{p.amount:,.2f}",
+            "detail": f"Method: {p.method.value}" + (f", Ref: {p.reference_number}" if p.reference_number else ""),
+            "status": "paid",
+            "ref_id": str(p.id),
+        })
+
+    # Disconnect logs (throttle, disconnect, reconnect)
+    dl_result = await db.execute(
+        select(DisconnectLog).where(DisconnectLog.customer_id == customer_id).order_by(DisconnectLog.performed_at.desc())
+    )
+    action_labels = {"throttle": "Throttled", "disconnect": "Disconnected", "reconnect": "Reconnected"}
+    action_statuses = {"throttle": "suspended", "disconnect": "disconnected", "reconnect": "active"}
+    for dl in dl_result.scalars().all():
+        label = action_labels.get(dl.action.value, dl.action.value)
+        events.append({
+            "type": "enforcement",
+            "date": dl.performed_at.isoformat(),
+            "title": f"{label} — {dl.reason.value.replace('_', ' ')}",
+            "detail": None,
+            "status": action_statuses.get(dl.action.value, dl.action.value),
+            "ref_id": str(dl.id),
+        })
+
+    # Notifications
+    notif_result = await db.execute(
+        select(Notification).where(Notification.customer_id == customer_id).order_by(Notification.created_at.desc())
+    )
+    for n in notif_result.scalars().all():
+        events.append({
+            "type": "notification",
+            "date": (n.sent_at or n.created_at).isoformat(),
+            "title": f"{n.type.value.upper()} — {n.subject}",
+            "detail": None,
+            "status": n.status.value,
+            "ref_id": str(n.id),
+        })
+
+    # Sort by date descending
+    events.sort(key=lambda e: e["date"], reverse=True)
+
+    return {"events": events, "total": len(events)}
