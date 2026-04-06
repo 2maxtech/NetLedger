@@ -165,7 +165,29 @@ async def delete_customer(
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    customer.status = CustomerStatus.terminated
+    # Remove PPPoE secret from MikroTik
+    if customer.mikrotik_secret_id:
+        try:
+            client, _ = await get_client_for_customer(db, customer)
+            if client:
+                await client.kick_session(customer.pppoe_username)
+                await client.delete_secret(customer.mikrotik_secret_id)
+        except Exception as e:
+            logger.warning(f"MikroTik delete secret failed for {customer.id}: {e}")
+
+    # Clean up related records
+    from app.models.invoice import Invoice
+    await db.execute(
+        Payment.__table__.delete().where(
+            Payment.invoice_id.in_(select(Invoice.id).where(Invoice.customer_id == customer_id))
+        )
+    )
+    await db.execute(Invoice.__table__.delete().where(Invoice.customer_id == customer_id))
+    await db.execute(DisconnectLog.__table__.delete().where(DisconnectLog.customer_id == customer_id))
+    await db.execute(Notification.__table__.delete().where(Notification.customer_id == customer_id))
+
+    await log_action(db, current_user.id, "customer.delete", "customer", customer.id, details=f"deleted {customer.pppoe_username}", owner_id=tid)
+    await db.delete(customer)
     await db.flush()
 
 
