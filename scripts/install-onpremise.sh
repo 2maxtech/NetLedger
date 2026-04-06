@@ -34,7 +34,7 @@ echo "  Free disk: ${DISK_FREE}MB (minimum: 10000MB)"
 if [ "$CPU_CORES" -lt 2 ]; then
   echo "Warning: Less than 2 CPU cores. Performance may be poor."
 fi
-if [ "$TOTAL_RAM" -lt 1800 ]; then
+if [ "$TOTAL_RAM" -lt 1500 ]; then
   echo "Error: At least 2GB RAM required. Found ${TOTAL_RAM}MB."
   exit 1
 fi
