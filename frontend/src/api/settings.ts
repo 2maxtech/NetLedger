@@ -112,3 +112,22 @@ export function getProfile() {
 export function updateProfile(data: ProfileUpdate) {
   return api.put('/auth/profile', data)
 }
+
+// Notification Templates
+export interface NotificationTemplates {
+  tpl_invoice_email_subject: string
+  tpl_invoice_email_body: string
+  tpl_invoice_sms: string
+  tpl_reminder_sms: string
+  tpl_overdue_email_subject: string
+  tpl_overdue_email_body: string
+  tpl_overdue_sms: string
+}
+
+export function getNotificationTemplates() {
+  return api.get<NotificationTemplates>('/settings/notifications')
+}
+
+export function saveNotificationTemplates(data: Record<string, string>) {
+  return api.put('/settings/notifications', data)
+}

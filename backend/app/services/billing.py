@@ -13,6 +13,8 @@ from app.models.invoice import Invoice, InvoiceStatus
 from app.models.app_setting import AppSetting
 from app.models.notification import Notification, NotificationStatus, NotificationType
 from app.models.payment import Payment
+from app.api.admin.settings import get_template_settings
+from app.services.template_renderer import render_template
 
 logger = logging.getLogger(__name__)
 
@@ -78,30 +80,32 @@ async def generate_invoice(db: AsyncSession, customer: Customer, billing_period:
                 portal_line = f"\nView your account: {portal_url}\n"
                 portal_sms = f" View account: {portal_url}"
 
+            # Load notification templates
+            templates = await get_template_settings(db, tenant_id=oid)
+            tpl_vars = {
+                "customer_name": customer.full_name,
+                "amount": f"₱{amount:,.2f}",
+                "plan_name": plan.name,
+                "due_date": due_date.strftime("%B %d, %Y"),
+                "due_date_short": due_date.strftime("%b %d"),
+                "portal_url": portal_line.strip() if portal_line else "",
+            }
+
             # Email notification
-            email_msg = (
-                f"Hi {customer.full_name},\n\n"
-                f"Your invoice of ₱{amount:,.2f} for plan {plan.name} has been generated.\n"
-                f"Due date: {due_date.strftime('%B %d, %Y')}\n\n"
-                f"Please pay before the due date to avoid service interruption.\n"
-                f"{portal_line}\n"
-                f"Thank you!"
-            )
             db.add(Notification(
                 customer_id=customer.id,
                 type=NotificationType.email,
-                subject=f"Invoice - ₱{amount:,.2f} due {due_date.strftime('%b %d')}",
-                message=email_msg,
+                subject=render_template(templates["tpl_invoice_email_subject"], tpl_vars),
+                message=render_template(templates["tpl_invoice_email_body"], tpl_vars),
                 status=NotificationStatus.pending,
                 owner_id=oid,
             ))
             # SMS notification
-            sms_msg = f"Hi {customer.full_name}, your bill of P{amount:,.2f} is due on {due_date.strftime('%b %d')}. Please pay on time to avoid disconnection.{portal_sms}"
             db.add(Notification(
                 customer_id=customer.id,
                 type=NotificationType.sms,
                 subject="Invoice Generated",
-                message=sms_msg,
+                message=render_template(templates["tpl_invoice_sms"], tpl_vars),
                 status=NotificationStatus.pending,
                 owner_id=oid,
             ))
@@ -404,11 +408,20 @@ async def send_billing_reminders(db: AsyncSession) -> int:
 
     for inv in invoices:
         customer = inv.customer
+        # Load templates for this customer's tenant
+        templates = await get_template_settings(db, tenant_id=customer.owner_id)
+        tpl_vars = {
+            "customer_name": customer.full_name,
+            "amount": f"₱{inv.amount}",
+            "due_date": str(inv.due_date),
+            "due_date_short": inv.due_date.strftime("%b %d") if hasattr(inv.due_date, 'strftime') else str(inv.due_date),
+            "portal_url": "",
+        }
         notification = Notification(
             customer_id=customer.id,
             type=NotificationType.sms,
             subject="Payment Reminder",
-            message=f"Hi {customer.full_name}, your bill of ₱{inv.amount} is due on {inv.due_date}. Please pay before the due date to avoid service interruption.",
+            message=render_template(templates["tpl_reminder_sms"], tpl_vars),
             status=NotificationStatus.pending,
             owner_id=customer.owner_id,
         )

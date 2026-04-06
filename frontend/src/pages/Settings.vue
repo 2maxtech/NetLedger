@@ -15,18 +15,21 @@ import {
   saveBillingSettings,
   getProfile,
   updateProfile,
+  getNotificationTemplates,
+  saveNotificationTemplates,
   type SmtpSettings,
   type SmsSettings,
   type BrandingSettings,
   type BillingSettingsType,
   type ProfileUpdate,
+  type NotificationTemplates,
 } from '../api/settings'
 
 const { user } = useAuth()
 import { useImpersonate } from '../composables/useImpersonate'
 const { isImpersonating } = useImpersonate()
 const isSuperAdmin = computed(() => user.value?.role === 'super_admin' && !isImpersonating.value)
-const activeTab = ref<'account' | 'billing' | 'smtp' | 'sms' | 'branding' | 'libreqos'>(isImpersonating.value ? 'billing' : 'account')
+const activeTab = ref<'account' | 'billing' | 'smtp' | 'sms' | 'branding' | 'notifications' | 'libreqos'>(isImpersonating.value ? 'billing' : 'account')
 
 // SMTP
 const smtp = ref<SmtpSettings>({
@@ -106,6 +109,21 @@ const libreqosLoading = ref(false)
 const libreqosGenerating = ref(false)
 const libreqosCopied = ref(false)
 const libreqosUrl = computed(() => libreqosToken.value ? `${window.location.origin}/api/v1/libreqos/shaped-devices.csv?token=${libreqosToken.value}` : '')
+
+// Notification Templates
+const templates = ref<NotificationTemplates>({
+  tpl_invoice_email_subject: '',
+  tpl_invoice_email_body: '',
+  tpl_invoice_sms: '',
+  tpl_reminder_sms: '',
+  tpl_overdue_email_subject: '',
+  tpl_overdue_email_body: '',
+  tpl_overdue_sms: '',
+})
+const templatesLoading = ref(false)
+const templatesSaving = ref(false)
+const templatesMsg = ref('')
+const templatesMsgType = ref<'success' | 'error'>('success')
 
 // Account
 const account = ref({
@@ -405,12 +423,41 @@ function copyLibreqosUrl() {
   setTimeout(() => { libreqosCopied.value = false }, 2000)
 }
 
+async function loadTemplates() {
+  templatesLoading.value = true
+  try {
+    const { data } = await getNotificationTemplates()
+    templates.value = { ...templates.value, ...data }
+  } catch {
+    templatesMsg.value = 'Failed to load notification templates'
+    templatesMsgType.value = 'error'
+  } finally {
+    templatesLoading.value = false
+  }
+}
+
+async function handleSaveTemplates() {
+  templatesSaving.value = true
+  templatesMsg.value = ''
+  try {
+    await saveNotificationTemplates(templates.value as unknown as Record<string, string>)
+    templatesMsg.value = 'Notification templates saved successfully'
+    templatesMsgType.value = 'success'
+  } catch (e: any) {
+    templatesMsg.value = e.response?.data?.detail || 'Failed to save templates'
+    templatesMsgType.value = 'error'
+  } finally {
+    templatesSaving.value = false
+  }
+}
+
 onMounted(() => {
   loadAccount()
   loadBilling()
   loadSmtp()
   loadSms()
   loadBranding()
+  loadTemplates()
   loadLibreqos()
 })
 </script>
@@ -479,6 +526,18 @@ onMounted(() => {
         ]"
       >
         Branding
+      </button>
+      <button
+        v-if="!isSuperAdmin"
+        @click="activeTab = 'notifications'"
+        :class="[
+          'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px',
+          activeTab === 'notifications'
+            ? 'border-primary text-primary'
+            : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+        ]"
+      >
+        Notifications
       </button>
       <button
         v-if="!isSuperAdmin"
@@ -1047,6 +1106,104 @@ onMounted(() => {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Notifications Tab -->
+    <div v-if="activeTab === 'notifications'" class="space-y-6">
+      <div class="rounded-xl bg-white shadow-sm border border-gray-100 p-6">
+        <h2 class="text-lg font-semibold text-gray-800 mb-2">Notification Templates</h2>
+        <p class="text-sm text-gray-500 mb-4">Customize the messages sent to your customers. Use placeholders like <code class="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono text-primary">{customer_name}</code> that will be replaced with actual values.</p>
+
+        <!-- Available variables -->
+        <div class="mb-6 rounded-lg bg-gray-50 border border-gray-200 px-4 py-3">
+          <p class="text-xs font-medium text-gray-600 mb-2">Available Variables:</p>
+          <div class="flex flex-wrap gap-2">
+            <code v-for="v in ['{customer_name}', '{amount}', '{plan_name}', '{due_date}', '{due_date_short}', '{portal_url}']" :key="v" class="bg-white border border-gray-200 px-2 py-1 rounded text-xs font-mono text-gray-700">{{ v }}</code>
+          </div>
+        </div>
+
+        <div
+          v-if="templatesMsg"
+          :class="['mb-4 rounded-lg px-4 py-3 text-sm border', templatesMsgType === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700']"
+        >{{ templatesMsg }}</div>
+
+        <div class="space-y-6">
+          <!-- Invoice Email -->
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <svg class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
+              Invoice Email
+            </h3>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Subject</label>
+                <input v-model="templates.tpl_invoice_email_subject" type="text" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-mono" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Body</label>
+                <textarea v-model="templates.tpl_invoice_email_body" rows="5" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-mono" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Invoice SMS -->
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
+              Invoice SMS
+            </h3>
+            <textarea v-model="templates.tpl_invoice_sms" rows="2" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-mono" />
+            <p class="text-xs text-gray-400 mt-1">Keep SMS under 160 characters when possible</p>
+          </div>
+
+          <!-- Reminder SMS -->
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <svg class="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" /></svg>
+              Payment Reminder SMS
+            </h3>
+            <textarea v-model="templates.tpl_reminder_sms" rows="2" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-mono" />
+          </div>
+
+          <!-- Overdue Email -->
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <svg class="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+              Overdue Notice Email
+            </h3>
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Subject</label>
+                <input v-model="templates.tpl_overdue_email_subject" type="text" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-mono" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Body</label>
+                <textarea v-model="templates.tpl_overdue_email_body" rows="5" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-mono" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Overdue SMS -->
+          <div>
+            <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <svg class="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>
+              Overdue Notice SMS
+            </h3>
+            <textarea v-model="templates.tpl_overdue_sms" rows="2" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary font-mono" />
+          </div>
+        </div>
+
+        <!-- Save button -->
+        <div class="flex justify-end mt-6">
+          <button
+            @click="handleSaveTemplates"
+            :disabled="templatesSaving"
+            class="px-6 py-2.5 rounded-lg bg-primary text-white font-medium text-sm hover:bg-primary-hover disabled:opacity-60 transition-colors"
+          >
+            {{ templatesSaving ? 'Saving...' : 'Save Templates' }}
+          </button>
+        </div>
       </div>
     </div>
 

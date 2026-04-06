@@ -235,6 +235,65 @@ async def update_billing(
     return {"status": "saved", "keys_updated": list(allowed.keys())}
 
 
+# --- Notification Templates ---
+
+TEMPLATE_KEYS = [
+    "tpl_invoice_email_subject",
+    "tpl_invoice_email_body",
+    "tpl_invoice_sms",
+    "tpl_reminder_sms",
+    "tpl_overdue_email_subject",
+    "tpl_overdue_email_body",
+    "tpl_overdue_sms",
+]
+
+TEMPLATE_DEFAULTS = {
+    "tpl_invoice_email_subject": "Invoice - {amount} due {due_date_short}",
+    "tpl_invoice_email_body": "Hi {customer_name},\n\nYour invoice of {amount} for plan {plan_name} has been generated.\nDue date: {due_date}\n\nPlease pay before the due date to avoid service interruption.\n{portal_url}\n\nThank you!",
+    "tpl_invoice_sms": "Hi {customer_name}, your bill of {amount} is due on {due_date_short}. Please pay on time to avoid disconnection. {portal_url}",
+    "tpl_reminder_sms": "Hi {customer_name}, your bill of {amount} is due on {due_date}. Please pay before the due date to avoid service interruption.",
+    "tpl_overdue_email_subject": "Overdue Notice - {amount}",
+    "tpl_overdue_email_body": "Hi {customer_name},\n\nYour invoice of {amount} is now overdue. Please settle your balance immediately to avoid service interruption.\n{portal_url}\n\nThank you!",
+    "tpl_overdue_sms": "Hi {customer_name}, your bill of {amount} is overdue. Please pay immediately to avoid disconnection. {portal_url}",
+}
+
+
+async def get_template_settings(db: AsyncSession, tenant_id: uuid.UUID | None = None) -> dict:
+    query = select(AppSetting).where(AppSetting.key.in_(TEMPLATE_KEYS))
+    if tenant_id is not None:
+        query = query.where(AppSetting.owner_id == tenant_id)
+    else:
+        query = query.where(AppSetting.owner_id.is_(None))
+    result = await db.execute(query)
+    saved = {s.key: s.value for s in result.scalars().all()}
+    return {k: saved.get(k, v) for k, v in TEMPLATE_DEFAULTS.items()}
+
+
+@router.get("/notifications")
+async def get_notification_templates(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+    tenant_id: str = Depends(get_tenant_id),
+):
+    tid = uuid.UUID(tenant_id)
+    return await get_template_settings(db, tenant_id=tid)
+
+
+@router.put("/notifications")
+async def update_notification_templates(
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+    tenant_id: str = Depends(get_tenant_id),
+):
+    tid = uuid.UUID(tenant_id)
+    allowed = {k: v for k, v in body.items() if k in TEMPLATE_KEYS}
+    for key, value in allowed.items():
+        await save_setting(db, key, str(value), tenant_id=tid)
+    await db.flush()
+    return {"status": "saved", "keys_updated": list(allowed.keys())}
+
+
 # --- Branding / Company Profile ---
 
 BRANDING_KEYS = [
