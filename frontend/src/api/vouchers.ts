@@ -3,26 +3,33 @@ import api from './client'
 export interface VoucherType {
   id: string
   code: string
-  plan_id: string
-  duration_days: number
+  router_id: string
+  hotspot_profile: string
+  duration_hours: number
   status: string
-  customer_id: string | null
   activated_at: string | null
   expires_at: string | null
   batch_id: string | null
   created_at: string
 }
 
-export function getVouchers(params?: { status?: string; batch_id?: string; page?: number; size?: number }) {
-  return api.get<{ items: VoucherType[]; total: number }>('/vouchers/', { params })
+export interface HotspotProfile {
+  name: string
+  rate_limit: string
+  session_timeout: string
+  shared_users: string
 }
 
-export function generateVouchers(data: { count: number; plan_id: string; duration_days: number }) {
+export function getVouchers(params?: { status?: string; batch_id?: string }) {
+  return api.get<VoucherType[]>('/vouchers/', { params })
+}
+
+export function getHotspotProfiles(routerId: string) {
+  return api.get<HotspotProfile[]>('/vouchers/hotspot-profiles', { params: { router_id: routerId } })
+}
+
+export function generateVouchers(data: { count: number; router_id: string; hotspot_profile: string; duration_hours: number }) {
   return api.post<VoucherType[]>('/vouchers/generate', data)
-}
-
-export function redeemVoucher(data: { code: string; customer_id: string }) {
-  return api.post('/vouchers/redeem', data)
 }
 
 export function revokeVoucher(id: string) {
