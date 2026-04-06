@@ -65,7 +65,7 @@ fi
 
 echo ""
 echo "Building and starting NetLedger..."
-docker compose -f docker-compose.onpremise.build.yml up -d --build
+docker compose -f docker-compose.onpremise.yml up -d --build
 
 echo "Waiting for services to start..."
 for i in $(seq 1 30); do
@@ -90,4 +90,4 @@ echo "  ║  your admin account.                   ║"
 echo "  ║                                       ║"
 echo "  ╚═══════════════════════════════════════╝"
 echo ""
-echo "To update later: cd $INSTALL_DIR && git pull && docker compose -f docker-compose.onpremise.build.yml up -d --build"
+echo "To update later: cd $INSTALL_DIR && git pull && docker compose -f docker-compose.onpremise.yml up -d --build"

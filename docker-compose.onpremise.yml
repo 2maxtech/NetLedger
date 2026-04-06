@@ -1,11 +1,3 @@
-# NetLedger On-Premise — Docker Compose (Option A)
-# Downloads pre-built images. No source code needed.
-#
-# Quick start:
-#   1. Copy .env.onpremise.example to .env and fill in passwords
-#   2. docker compose -f docker-compose.onpremise.yml up -d
-#   3. Open http://your-server-ip in a browser to run the setup wizard
-
 services:
   db:
     image: postgres:16-alpine
@@ -22,7 +14,9 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ghcr.io/2maxtech/netledger-backend:${VERSION:-latest}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     depends_on:
       - db
       - redis
@@ -37,7 +31,11 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/2maxtech/netledger-frontend:${VERSION:-latest}
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_DEPLOYMENT_MODE: onpremise
     ports:
       - "${HTTP_PORT:-80}:80"
     depends_on:
@@ -45,7 +43,9 @@ services:
     restart: unless-stopped
 
   celery-worker:
-    image: ghcr.io/2maxtech/netledger-backend:${VERSION:-latest}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     command: celery -A app.celery_app worker --loglevel=info --concurrency=2
     depends_on:
       - db
@@ -58,7 +58,9 @@ services:
     restart: unless-stopped
 
   celery-beat:
-    image: ghcr.io/2maxtech/netledger-backend:${VERSION:-latest}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     command: celery -A app.celery_app beat --loglevel=info -s /tmp/celerybeat-schedule
     depends_on:
       - db
