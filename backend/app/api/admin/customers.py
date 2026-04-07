@@ -1,6 +1,6 @@
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -12,12 +12,22 @@ from app.core.tenant import get_tenant_id
 from app.models.customer import Customer, CustomerStatus
 from app.models.disconnect_log import DisconnectAction, DisconnectLog, DisconnectReason
 from app.models.invoice import Invoice
+from app.models.notification import Notification, NotificationStatus, NotificationType
 from app.models.payment import Payment
-from app.models.notification import Notification
 from app.models.user import User
-from app.schemas.customer import CustomerCreate, CustomerListResponse, CustomerResponse, CustomerUpdate
+from app.schemas.customer import (
+    BulkActionResponse,
+    BulkChangeStatusRequest,
+    BulkCustomerIdsRequest,
+    CustomerCreate,
+    CustomerListResponse,
+    CustomerResponse,
+    CustomerUpdate,
+)
+from app.services import billing as billing_service
 from app.services.audit import log_action
 from app.services.mikrotik import get_client_for_customer
+from app.utils.csv_export import make_csv_response
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +40,7 @@ async def list_customers(
     page_size: int = Query(20, ge=1, le=100),
     status_filter: CustomerStatus | None = Query(None, alias="status"),
     search: str | None = Query(None),
+    format: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     tenant_id: str = Depends(get_tenant_id),
@@ -54,6 +65,25 @@ async def list_customers(
             | (Customer.email.ilike(search_filter))
             | (Customer.pppoe_username.ilike(search_filter))
         )
+
+    if format == "csv":
+        query = query.order_by(Customer.created_at.desc())
+        result = await db.execute(query)
+        customers = result.scalars().all()
+        rows = [
+            {
+                "full_name": c.full_name,
+                "email": c.email or "",
+                "phone": c.phone or "",
+                "pppoe_username": c.pppoe_username,
+                "plan_name": c.plan.name if c.plan else "",
+                "status": c.status.value,
+                "area_name": c.area.name if c.area else "",
+                "created_at": c.created_at.isoformat() if c.created_at else "",
+            }
+            for c in customers
+        ]
+        return make_csv_response(rows, "customers.csv")
 
     total_result = await db.execute(count_query)
     total = total_result.scalar()
@@ -113,6 +143,167 @@ async def create_customer(
 
     await log_action(db, current_user.id, "customer.create", "customer", customer.id, owner_id=uuid.UUID(tenant_id))
     return customer
+
+
+# --- Bulk action endpoints (must be before /{customer_id} routes) ---
+
+
+@router.post("/bulk/generate-invoices", response_model=BulkActionResponse)
+async def bulk_generate_invoices(
+    body: BulkCustomerIdsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    tenant_id: str = Depends(get_tenant_id),
+):
+    """Generate invoices for multiple customers at once."""
+    tid = uuid.UUID(tenant_id)
+    billing_period = date.today().replace(day=1)
+    success = 0
+    failed = 0
+    errors = []
+
+    for cid in body.customer_ids:
+        try:
+            result = await db.execute(
+                select(Customer).where(Customer.id == cid, Customer.owner_id == tid)
+            )
+            customer = result.scalar_one_or_none()
+            if not customer:
+                failed += 1
+                errors.append({"customer_id": str(cid), "error": "Customer not found"})
+                continue
+            if not customer.plan_id:
+                failed += 1
+                errors.append({"customer_id": str(cid), "error": "Customer has no plan assigned"})
+                continue
+
+            await billing_service.generate_invoice(db, customer, billing_period, owner_id=tid)
+            success += 1
+        except Exception as e:
+            failed += 1
+            errors.append({"customer_id": str(cid), "error": str(e)})
+
+    await db.flush()
+    return BulkActionResponse(success=success, failed=failed, errors=errors)
+
+
+@router.post("/bulk/send-reminder", response_model=BulkActionResponse)
+async def bulk_send_reminder(
+    body: BulkCustomerIdsRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    tenant_id: str = Depends(get_tenant_id),
+):
+    """Send payment reminder notifications to multiple customers."""
+    from app.api.admin.settings import get_template_settings
+    from app.services.template_renderer import render_template
+
+    tid = uuid.UUID(tenant_id)
+    success = 0
+    failed = 0
+    errors = []
+
+    templates = await get_template_settings(db, tenant_id=tid)
+
+    for cid in body.customer_ids:
+        try:
+            result = await db.execute(
+                select(Customer).where(Customer.id == cid, Customer.owner_id == tid)
+            )
+            customer = result.scalar_one_or_none()
+            if not customer:
+                failed += 1
+                errors.append({"customer_id": str(cid), "error": "Customer not found"})
+                continue
+
+            # Find the latest unpaid invoice for this customer
+            inv_result = await db.execute(
+                select(Invoice).where(
+                    Invoice.customer_id == cid,
+                    Invoice.status.in_(["pending", "overdue"]),
+                ).order_by(Invoice.due_date.desc()).limit(1)
+            )
+            invoice = inv_result.scalar_one_or_none()
+            if not invoice:
+                failed += 1
+                errors.append({"customer_id": str(cid), "error": "No unpaid invoice found"})
+                continue
+
+            tpl_vars = {
+                "customer_name": customer.full_name,
+                "amount": f"\u20b1{invoice.amount:,.2f}",
+                "due_date": str(invoice.due_date),
+                "due_date_short": invoice.due_date.strftime("%b %d") if hasattr(invoice.due_date, "strftime") else str(invoice.due_date),
+                "portal_url": "",
+            }
+
+            # Create SMS reminder
+            db.add(Notification(
+                customer_id=customer.id,
+                type=NotificationType.sms,
+                subject="Payment Reminder",
+                message=render_template(templates["tpl_reminder_sms"], tpl_vars),
+                status=NotificationStatus.pending,
+                owner_id=tid,
+            ))
+            # Create email reminder if customer has valid email
+            if customer.email and not customer.email.endswith("@imported.local"):
+                db.add(Notification(
+                    customer_id=customer.id,
+                    type=NotificationType.email,
+                    subject=render_template(templates.get("tpl_reminder_email_subject", "Payment Reminder"), tpl_vars),
+                    message=render_template(templates.get("tpl_reminder_email_body", "Hi {customer_name}, your bill of {amount} is due on {due_date}."), tpl_vars),
+                    status=NotificationStatus.pending,
+                    owner_id=tid,
+                ))
+            success += 1
+        except Exception as e:
+            failed += 1
+            errors.append({"customer_id": str(cid), "error": str(e)})
+
+    await db.flush()
+    return BulkActionResponse(success=success, failed=failed, errors=errors)
+
+
+@router.post("/bulk/change-status", response_model=BulkActionResponse)
+async def bulk_change_status(
+    body: BulkChangeStatusRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    tenant_id: str = Depends(get_tenant_id),
+):
+    """Change status for multiple customers at once."""
+    tid = uuid.UUID(tenant_id)
+    success = 0
+    failed = 0
+    errors = []
+
+    for cid in body.customer_ids:
+        try:
+            result = await db.execute(
+                select(Customer).where(Customer.id == cid, Customer.owner_id == tid)
+            )
+            customer = result.scalar_one_or_none()
+            if not customer:
+                failed += 1
+                errors.append({"customer_id": str(cid), "error": "Customer not found"})
+                continue
+
+            old_status = customer.status
+            customer.status = body.status
+            await log_action(
+                db, current_user.id, "customer.bulk_status",
+                "customer", customer.id,
+                details=f"{old_status.value} -> {body.status.value}",
+                owner_id=tid,
+            )
+            success += 1
+        except Exception as e:
+            failed += 1
+            errors.append({"customer_id": str(cid), "error": str(e)})
+
+    await db.flush()
+    return BulkActionResponse(success=success, failed=failed, errors=errors)
 
 
 @router.get("/{customer_id}", response_model=CustomerResponse)

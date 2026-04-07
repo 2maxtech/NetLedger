@@ -15,6 +15,7 @@ class UserResponse(BaseModel):
     phone: str | None = None
     role: UserRole
     is_active: bool
+    is_demo: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}

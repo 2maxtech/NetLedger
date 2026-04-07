@@ -34,7 +34,22 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account disabled")
 
     return TokenResponse(
-        access_token=create_access_token(str(user.id), user.role.value),
+        access_token=create_access_token(str(user.id), user.role.value, is_demo=user.is_demo),
+        refresh_token=create_refresh_token(str(user.id)),
+    )
+
+
+@router.post("/demo-login", response_model=TokenResponse)
+async def demo_login(db: AsyncSession = Depends(get_db)):
+    """One-click demo login. Returns a JWT for the demo user (read-only)."""
+    result = await db.execute(select(User).where(User.is_demo == True).limit(1))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Demo not available")
+
+    return TokenResponse(
+        access_token=create_access_token(str(user.id), user.role.value, is_demo=True),
         refresh_token=create_refresh_token(str(user.id)),
     )
 
@@ -53,7 +68,7 @@ async def refresh_token(body: RefreshRequest, db: AsyncSession = Depends(get_db)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
 
     return TokenResponse(
-        access_token=create_access_token(str(user.id), user.role.value),
+        access_token=create_access_token(str(user.id), user.role.value, is_demo=user.is_demo),
         refresh_token=create_refresh_token(str(user.id)),
     )
 

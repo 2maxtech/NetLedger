@@ -22,10 +22,12 @@ from app.api.admin.ipam import router as ipam_router
 from app.api.admin.audit import router as audit_router
 from app.api.admin.vpn import router as vpn_router
 from app.api.admin.libreqos import router as libreqos_router
+from app.api.admin.onboarding import router as onboarding_router
 from app.api.admin.system import router as system_router
 from app.api.setup import router as setup_router
 from app.core.config import settings
 
+from app.core.demo_guard import DemoGuardMiddleware
 from app.core.rate_limit import RateLimitMiddleware
 
 app = FastAPI(title=settings.PROJECT_NAME, openapi_url=f"{settings.API_V1_PREFIX}/openapi.json")
@@ -38,6 +40,10 @@ async def create_tables():
     from app.models.base import Base
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    # Seed demo tenant (skips if already present)
+    from app.scripts.seed_demo import seed_demo_data
+    await seed_demo_data()
 
 # Build allowed origins based on deployment mode
 _allowed_origins = ["https://netl.2max.tech", "http://localhost", "http://localhost:5173"]
@@ -52,6 +58,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(RateLimitMiddleware, rate_limit=10, window=60)  # 10 attempts per minute on auth
+app.add_middleware(DemoGuardMiddleware)  # Block mutating requests for demo users
 
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(plans_router, prefix=settings.API_V1_PREFIX)
@@ -73,6 +80,7 @@ if settings.DEPLOYMENT_MODE != "onpremise":
     app.include_router(vpn_router, prefix=settings.API_V1_PREFIX)
 app.include_router(libreqos_router, prefix=settings.API_V1_PREFIX)
 app.include_router(setup_router, prefix=settings.API_V1_PREFIX)
+app.include_router(onboarding_router, prefix=settings.API_V1_PREFIX)
 app.include_router(system_router, prefix=settings.API_V1_PREFIX)
 
 

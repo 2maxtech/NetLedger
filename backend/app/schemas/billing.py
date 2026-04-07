@@ -81,3 +81,15 @@ class RevenueSummary(BaseModel):
     total_collected: Decimal
     total_outstanding: Decimal
     collection_rate: float
+
+
+# --- Bulk action schemas ---
+
+class BulkInvoiceIdsRequest(BaseModel):
+    invoice_ids: list[uuid.UUID]
+
+
+class BulkActionResponse(BaseModel):
+    success: int
+    failed: int
+    errors: list[dict] = []

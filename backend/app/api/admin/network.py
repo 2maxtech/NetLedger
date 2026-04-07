@@ -19,6 +19,7 @@ from app.models.payment import Payment
 from app.models.plan import Plan
 from app.models.user import User
 from app.services.mikrotik import get_mikrotik_client, mikrotik
+from app.utils.csv_export import make_csv_response
 
 logger = logging.getLogger(__name__)
 
@@ -232,6 +233,7 @@ async def get_dashboard(
 
 @router.get("/active-sessions")
 async def get_active_sessions(
+    format: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     tenant_id: str = Depends(get_tenant_id),
@@ -242,6 +244,8 @@ async def get_active_sessions(
     result = await db.execute(select(Router).where(Router.owner_id == tid, Router.is_active == True))
     routers = result.scalars().all()
     if not routers:
+        if format == "csv":
+            return make_csv_response([], "active_sessions.csv")
         return {"sessions": [], "total": 0}
 
     # Get tenant's customer usernames for filtering
@@ -256,9 +260,26 @@ async def get_active_sessions(
             # Only include sessions belonging to this tenant's customers
             for s in sessions:
                 if s.get("name") in tenant_usernames:
+                    s["_router_name"] = r.name if hasattr(r, "name") else str(r.id)
                     all_sessions.append(s)
         except Exception:
             pass
+
+    if format == "csv":
+        rows = [
+            {
+                "username": s.get("name", ""),
+                "ip_address": s.get("address", ""),
+                "mac_address": s.get("caller-id", ""),
+                "uptime": s.get("uptime", ""),
+                "router_name": s.get("_router_name", ""),
+                "bytes_in": s.get("bytes-in", "0"),
+                "bytes_out": s.get("bytes-out", "0"),
+            }
+            for s in all_sessions
+        ]
+        return make_csv_response(rows, "active_sessions.csv")
+
     return {"sessions": all_sessions, "total": len(all_sessions)}
 
 

@@ -1,0 +1,12 @@
+<h2 style="color:#dc2626;font-size:20px;margin:0 0 16px;">Payment Overdue</h2>
+<p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 16px;">
+  Hi {{ customer_name }},
+</p>
+<p style="color:#374151;font-size:14px;line-height:1.6;margin:0 0 24px;">
+  Your payment of <strong>{{ amount }}</strong> for <strong>{{ plan_name }}</strong> was due on <strong>{{ due_date }}</strong> and is now overdue. Please settle your balance to avoid service interruption.
+</p>
+{% if portal_url %}
+<p style="text-align:center;margin:0 0 16px;">
+  <a href="{{ portal_url }}" style="display:inline-block;padding:12px 32px;background-color:#dc2626;color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:600;">Pay Now</a>
+</p>
+{% endif %}

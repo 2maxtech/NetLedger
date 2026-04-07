@@ -16,6 +16,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Paths to rate limit
         self.limited_paths = {
             "/api/v1/auth/login",
+            "/api/v1/auth/demo-login",
             "/api/v1/auth/register",
             "/api/v1/auth/refresh",
             "/api/v1/portal/auth/login",

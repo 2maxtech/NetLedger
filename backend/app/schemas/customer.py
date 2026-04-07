@@ -72,3 +72,20 @@ class CustomerListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+# --- Bulk action schemas ---
+
+class BulkCustomerIdsRequest(BaseModel):
+    customer_ids: list[uuid.UUID]
+
+
+class BulkChangeStatusRequest(BaseModel):
+    customer_ids: list[uuid.UUID]
+    status: CustomerStatus
+
+
+class BulkActionResponse(BaseModel):
+    success: int
+    failed: int
+    errors: list[dict] = []
