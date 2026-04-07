@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { demoLogin } from '../api/auth'
 import ChatWidget from '../components/ChatWidget.vue'
@@ -7,34 +7,10 @@ import ChatWidget from '../components/ChatWidget.vue'
 const router = useRouter()
 const demoLoading = ref(false)
 
-function loadTawk() {
-  if (document.getElementById('tawk-script')) return
-  const s = document.createElement('script')
-  s.id = 'tawk-script'
-  s.async = true
-  s.src = 'https://embed.tawk.to/69d550e59922e51c34efc32a/1jlkk80jn'
-  s.charset = 'UTF-8'
-  s.setAttribute('crossorigin', '*')
-  document.body.appendChild(s)
-}
-
-function unloadTawk() {
-  const el = document.getElementById('tawk-script')
-  if (el) el.remove()
-  // Hide the widget if it's been loaded
-  if (window.Tawk_API?.hideWidget) window.Tawk_API.hideWidget()
-}
-
 onMounted(() => {
   if (localStorage.getItem('access_token')) {
     router.replace('/dashboard')
   }
-  loadTawk()
-  if (window.Tawk_API?.showWidget) window.Tawk_API.showWidget()
-})
-
-onUnmounted(() => {
-  unloadTawk()
 })
 
 async function tryDemo() {
