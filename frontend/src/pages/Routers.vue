@@ -62,8 +62,10 @@ const importPrices = ref<Record<string, string>>({})
 // Scan modal
 const showScanModal = ref(false)
 const scanSubnet = ref('192.168.88.0/24')
+const scanUsername = ref('admin')
+const scanPassword = ref('')
 const scanning = ref(false)
-const scanResults = ref<Array<{ ip: string; mac?: string; hostname?: string; open_ports?: number[] }>>([])
+const scanResults = ref<Array<{ ip: string; identity?: string; version?: string; auth_ok?: boolean }>>([])
 
 // VPN Setup
 const showVpnModal = ref(false)
@@ -277,8 +279,8 @@ async function doScan() {
   scanning.value = true
   scanResults.value = []
   try {
-    const { data } = await scanNetwork({ subnet: scanSubnet.value, timeout: 10 })
-    scanResults.value = data as any[]
+    const { data } = await scanNetwork({ subnet: scanSubnet.value, username: scanUsername.value, password: scanPassword.value })
+    scanResults.value = (data as any).found || []
   } catch (e) {
     console.error('Failed to scan network', e)
   } finally {
@@ -583,8 +585,8 @@ onMounted(loadRouters)
     <!-- Scan Network Modal -->
     <Modal :open="showScanModal" title="Scan Network" size="lg" @close="showScanModal = false">
       <div class="space-y-4">
-        <div class="flex items-end gap-3">
-          <div class="flex-1">
+        <div class="grid grid-cols-2 gap-3">
+          <div class="col-span-2">
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Subnet</label>
             <input
               v-model="scanSubnet"
@@ -593,42 +595,51 @@ onMounted(loadRouters)
               class="w-full rounded-lg border border-gray-300 text-sm px-3 py-2.5 font-mono focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
             />
           </div>
-          <button
-            @click="doScan"
-            :disabled="scanning || !scanSubnet"
-            class="px-4 py-2.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50 inline-flex items-center gap-2"
-          >
-            <svg v-if="scanning" class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
-            {{ scanning ? 'Scanning...' : 'Scan' }}
-          </button>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">MikroTik Username</label>
+            <input
+              v-model="scanUsername"
+              type="text"
+              placeholder="admin"
+              class="w-full rounded-lg border border-gray-300 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">MikroTik Password</label>
+            <input
+              v-model="scanPassword"
+              type="password"
+              placeholder="Router password"
+              class="w-full rounded-lg border border-gray-300 text-sm px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+            />
+          </div>
         </div>
+        <button
+          @click="doScan"
+          :disabled="scanning || !scanSubnet"
+          class="w-full px-4 py-2.5 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
+        >
+          <svg v-if="scanning" class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          {{ scanning ? 'Scanning...' : 'Scan Network' }}
+        </button>
 
         <div v-if="scanResults.length > 0" class="overflow-x-auto">
           <table class="w-full text-sm text-left">
             <thead>
               <tr class="border-b border-gray-100 bg-gray-50/50">
                 <th class="px-4 py-2 font-medium text-gray-500">IP Address</th>
-                <th class="px-4 py-2 font-medium text-gray-500">MAC Address</th>
-                <th class="px-4 py-2 font-medium text-gray-500">Hostname</th>
-                <th class="px-4 py-2 font-medium text-gray-500">Open Ports</th>
+                <th class="px-4 py-2 font-medium text-gray-500">Identity</th>
+                <th class="px-4 py-2 font-medium text-gray-500">Version</th>
+                <th class="px-4 py-2 font-medium text-gray-500">Auth</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(r, i) in scanResults" :key="i" class="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                 <td class="px-4 py-2"><code class="font-mono text-gray-800">{{ r.ip }}</code></td>
-                <td class="px-4 py-2"><code class="font-mono text-gray-500">{{ r.mac || '---' }}</code></td>
-                <td class="px-4 py-2 text-gray-700">{{ r.hostname || '---' }}</td>
+                <td class="px-4 py-2 text-gray-700">{{ r.identity || '---' }}</td>
+                <td class="px-4 py-2 text-gray-500">{{ r.version || '---' }}</td>
                 <td class="px-4 py-2">
-                  <div class="flex gap-1 flex-wrap">
-                    <span
-                      v-for="port in (r.open_ports || [])"
-                      :key="port"
-                      class="inline-flex px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 text-xs font-mono"
-                    >
-                      {{ port }}
-                    </span>
-                    <span v-if="!r.open_ports?.length" class="text-gray-400">---</span>
-                  </div>
+                  <span :class="r.auth_ok ? 'text-green-600' : 'text-amber-500'" class="text-xs font-medium">{{ r.auth_ok ? 'OK' : 'Auth Failed' }}</span>
                 </td>
               </tr>
             </tbody>
