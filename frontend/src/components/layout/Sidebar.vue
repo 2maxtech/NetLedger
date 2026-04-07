@@ -52,7 +52,6 @@ const ispMenu: MenuItem[] = [
   { path: '/routers', label: 'Routers', icon: 'server' },
   { path: '/areas', label: 'Areas', icon: 'map-pin' },
   { path: '/tickets', label: 'Tickets', icon: 'ticket' },
-  { path: '/setup-guide', label: 'Setup Guide', icon: 'guide' },
   {
     label: 'System', icon: 'settings', children: [
       { path: '/system/users', label: 'Staff Users' },

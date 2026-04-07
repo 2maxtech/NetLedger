@@ -29,6 +29,10 @@ const router = createRouter({
       path: '/setup',
       component: () => import('../pages/Setup.vue'),
     },
+    {
+      path: '/setup-guide',
+      component: () => import('../pages/SetupGuide.vue'),
+    },
     ...(isOnPremise ? [
       {
         path: '/portal/login',
@@ -86,7 +90,6 @@ const router = createRouter({
         { path: '/audit-logs', component: () => import('../pages/AuditLogs.vue') },
         { path: '/system/status', component: () => import('../pages/system/SystemStatus.vue') },
         { path: '/system/logs', component: () => import('../pages/system/Logs.vue') },
-        { path: '/setup-guide', component: () => import('../pages/SetupGuide.vue') },
         { path: '/system/organizations', component: () => import('../pages/system/Organizations.vue') },
       ],
     },
@@ -94,7 +97,7 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  const publicPaths = ['/', '/login', '/register', '/self-hosted', '/setup']
+  const publicPaths = ['/', '/login', '/register', '/self-hosted', '/setup', '/setup-guide']
   const isPortal = to.path.startsWith('/portal')
   const isPortalLogin = to.matched.some(r => r.path === '/portal/:slug/login') || (isOnPremise && to.path === '/portal/login')
   if (publicPaths.includes(to.path) || isPortalLogin) {
