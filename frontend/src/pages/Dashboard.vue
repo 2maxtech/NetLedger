@@ -84,7 +84,7 @@ async function fetchDashboard() {
 onMounted(async () => {
   fetchDashboard()
   fetchOnboarding()
-  interval = setInterval(fetchDashboard, 5000)
+  interval = setInterval(fetchDashboard, 1000)
   if (isOnPremise) {
     try {
       const { data: ud } = await checkForUpdate()
