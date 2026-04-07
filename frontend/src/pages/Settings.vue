@@ -906,8 +906,24 @@ onMounted(() => {
     <div v-if="activeTab === 'payments'" class="space-y-6">
       <!-- PayMongo Configuration -->
       <div class="rounded-xl bg-white shadow-sm border border-gray-100 p-6">
-        <h2 class="text-lg font-semibold text-gray-800 mb-2">PayMongo Configuration</h2>
-        <p class="text-sm text-gray-500 mb-4">Accept GCash, Maya, and card payments. Sign up at <a href="https://paymongo.com" target="_blank" class="text-primary hover:underline">paymongo.com</a> to get your API keys.</p>
+        <h2 class="text-lg font-semibold text-gray-800 mb-2">Online Payments (GCash, Maya, Card)</h2>
+        <p class="text-sm text-gray-500 mb-2">Let your customers pay invoices online using GCash, Maya, or credit/debit card. Payments go directly to your account.</p>
+
+        <!-- Step-by-step setup guide -->
+        <div class="rounded-lg bg-amber-50 border border-amber-200 p-4 mb-4">
+          <h3 class="text-sm font-semibold text-amber-800 mb-2">How to set up (one-time):</h3>
+          <ol class="text-xs text-amber-700 space-y-1.5 list-decimal list-inside">
+            <li>Go to <a href="https://dashboard.paymongo.com/signup" target="_blank" class="underline font-medium">paymongo.com/signup</a> and create a free account</li>
+            <li>Complete business verification (DTI/SEC registration, valid ID) — takes 1-2 days</li>
+            <li>In your PayMongo dashboard, go to <strong>Developers → API Keys</strong></li>
+            <li>Copy your <strong>Secret Key</strong> (starts with <code class="bg-amber-100 px-1 rounded">sk_live_</code>) and <strong>Public Key</strong> (starts with <code class="bg-amber-100 px-1 rounded">pk_live_</code>) and paste them below</li>
+            <li>Still in PayMongo dashboard, go to <strong>Developers → Webhooks → Add Endpoint</strong></li>
+            <li>Paste the <strong>Webhook URL</strong> shown below, select event <code class="bg-amber-100 px-1 rounded">checkout_session.payment.paid</code>, and save</li>
+            <li>Copy the <strong>Webhook Signing Secret</strong> from PayMongo and paste it below</li>
+            <li>Click <strong>Test Connection</strong> to verify everything works</li>
+          </ol>
+          <p class="text-xs text-amber-600 mt-2">After setup, your customers will see a "Pay Now" link in their invoice SMS/email and in the customer portal.</p>
+        </div>
 
         <div
           v-if="paymentsMsg"
@@ -934,6 +950,7 @@ onMounted(() => {
               placeholder="sk_live_..."
               class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
             />
+            <p class="text-xs text-gray-400 mt-1">Found in PayMongo Dashboard → Developers → API Keys. Starts with <code>sk_live_</code> (or <code>sk_test_</code> for testing).</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Public Key</label>
@@ -943,6 +960,7 @@ onMounted(() => {
               placeholder="pk_live_..."
               class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
             />
+            <p class="text-xs text-gray-400 mt-1">Same page as Secret Key. Starts with <code>pk_live_</code> (or <code>pk_test_</code> for testing).</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Webhook Signing Secret</label>
@@ -952,6 +970,7 @@ onMounted(() => {
               placeholder="whsk_..."
               class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
             />
+            <p class="text-xs text-gray-400 mt-1">Found in PayMongo Dashboard → Developers → Webhooks → click your webhook → Signing Secret.</p>
           </div>
 
           <!-- Webhook URL -->
