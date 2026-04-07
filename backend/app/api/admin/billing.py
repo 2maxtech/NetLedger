@@ -19,6 +19,7 @@ from app.models.plan import Plan
 from app.models.user import User, UserRole
 from app.schemas.billing import (
     BulkActionResponse,
+    BulkInvoiceDeleteRequest,
     BulkInvoiceIdsRequest,
     InvoiceGenerateRequest,
     InvoiceListResponse,
@@ -181,6 +182,54 @@ async def bulk_mark_paid(
                 details=f"customer={invoice.customer_id} amount={invoice.amount}",
                 owner_id=tid,
             )
+            success += 1
+        except Exception as e:
+            failed += 1
+            errors.append({"invoice_id": str(inv_id), "error": str(e)})
+
+    await db.flush()
+    return BulkActionResponse(success=success, failed=failed, errors=errors)
+
+
+@router.post("/invoices/bulk/delete", response_model=BulkActionResponse)
+async def bulk_delete_invoices(
+    body: BulkInvoiceDeleteRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role(UserRole.admin)),
+    tenant_id: str = Depends(get_tenant_id),
+):
+    """Delete multiple invoices. Requires admin password confirmation. Cannot delete paid invoices."""
+    from app.core.security import verify_password
+
+    if not body.password or not verify_password(body.password, current_user.password_hash):
+        raise HTTPException(status_code=403, detail="Incorrect password")
+
+    tid = uuid.UUID(tenant_id)
+    success = 0
+    failed = 0
+    errors = []
+
+    for inv_id in body.invoice_ids:
+        try:
+            result = await db.execute(
+                select(Invoice).where(Invoice.id == inv_id, Invoice.owner_id == tid)
+            )
+            invoice = result.scalar_one_or_none()
+            if not invoice:
+                failed += 1
+                errors.append({"invoice_id": str(inv_id), "error": "Invoice not found"})
+                continue
+            if invoice.status == InvoiceStatus.paid:
+                failed += 1
+                errors.append({"invoice_id": str(inv_id), "error": "Cannot delete paid invoice"})
+                continue
+
+            # Delete related payments and notifications
+            from sqlalchemy import delete as sql_delete
+            await db.execute(sql_delete(Payment).where(Payment.invoice_id == invoice.id))
+            await db.execute(sql_delete(Notification).where(Notification.customer_id == invoice.customer_id, Notification.owner_id == tid))
+            await db.delete(invoice)
+            await log_action(db, current_user.id, "invoice.bulk_delete", "invoice", inv_id, details=f"amount={invoice.amount}", owner_id=tid)
             success += 1
         except Exception as e:
             failed += 1

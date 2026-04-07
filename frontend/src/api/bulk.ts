@@ -21,3 +21,6 @@ export function bulkMarkPaid(invoiceIds: string[]) {
 export function bulkSendNotification(invoiceIds: string[]) {
   return api.post<BulkResponse>('/billing/invoices/bulk/send-notification', { invoice_ids: invoiceIds })
 }
+export function bulkDeleteInvoices(invoiceIds: string[], password: string) {
+  return api.post<BulkResponse>('/billing/invoices/bulk/delete', { invoice_ids: invoiceIds, password })
+}

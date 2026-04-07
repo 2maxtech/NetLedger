@@ -89,6 +89,11 @@ class BulkInvoiceIdsRequest(BaseModel):
     invoice_ids: list[uuid.UUID]
 
 
+class BulkInvoiceDeleteRequest(BaseModel):
+    invoice_ids: list[uuid.UUID]
+    password: str
+
+
 class BulkActionResponse(BaseModel):
     success: int
     failed: int

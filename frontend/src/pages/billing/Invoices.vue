@@ -3,7 +3,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import dayjs from 'dayjs'
 import { getInvoices, generateInvoices, downloadInvoicePdf, deleteInvoice, type Invoice } from '../../api/billing'
 import { getCustomers, type Customer } from '../../api/customers'
-import { bulkMarkPaid, bulkSendNotification } from '../../api/bulk'
+import { bulkMarkPaid, bulkSendNotification, bulkDeleteInvoices } from '../../api/bulk'
 import { useAuth } from '../../composables/useAuth'
 import StatusBadge from '../../components/common/StatusBadge.vue'
 import Modal from '../../components/common/Modal.vue'
@@ -103,6 +103,38 @@ async function handleBulkSendNotification() {
     fetchInvoices()
   } catch (e: any) {
     bulkMessage.value = e.response?.data?.detail || 'Bulk notification failed'
+  } finally {
+    bulkLoading.value = false
+  }
+}
+
+// Bulk delete
+const showDeletePasswordModal = ref(false)
+const deletePassword = ref('')
+const deleteError = ref('')
+
+function handleBulkDelete() {
+  deletePassword.value = ''
+  deleteError.value = ''
+  showDeletePasswordModal.value = true
+}
+
+async function confirmBulkDelete() {
+  if (!deletePassword.value) { deleteError.value = 'Password is required'; return }
+  const ids = Array.from(selectedIds.value)
+  bulkLoading.value = true
+  deleteError.value = ''
+  try {
+    const { data } = await bulkDeleteInvoices(ids, deletePassword.value)
+    bulkMessage.value = `Deleted: ${data.success} success, ${data.failed} failed`
+    if (data.failed > 0 && data.errors.length > 0) {
+      bulkMessage.value += ` (${data.errors.map((e: any) => e.error).join(', ')})`
+    }
+    showDeletePasswordModal.value = false
+    clearSelection()
+    fetchInvoices()
+  } catch (e: any) {
+    deleteError.value = e.response?.data?.detail || 'Delete failed'
   } finally {
     bulkLoading.value = false
   }
@@ -528,9 +560,33 @@ onMounted(fetchInvoices)
             >
               Send Notification
             </button>
+            <button
+              @click="handleBulkDelete"
+              :disabled="bulkLoading"
+              class="px-3 py-1.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-50"
+            >
+              Delete
+            </button>
           </div>
         </div>
       </transition>
     </Teleport>
+
+    <!-- Bulk Delete Password Modal -->
+    <Modal :show="showDeletePasswordModal" title="Confirm Delete" @close="showDeletePasswordModal = false">
+      <p class="text-sm text-gray-600 mb-1">You are about to delete <strong>{{ selectedIds.size }} invoice(s)</strong>.</p>
+      <p class="text-sm text-red-600 mb-4">Paid invoices will be skipped. This action cannot be undone.</p>
+      <div v-if="deleteError" class="mb-3 rounded-lg px-3 py-2 text-sm bg-red-50 border border-red-200 text-red-700">{{ deleteError }}</div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1.5">Enter your password to confirm</label>
+        <input v-model="deletePassword" type="password" placeholder="Your admin password" class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400" @keyup.enter="confirmBulkDelete" />
+      </div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button @click="showDeletePasswordModal = false" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+        <button @click="confirmBulkDelete" :disabled="bulkLoading || !deletePassword" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50">
+          {{ bulkLoading ? 'Deleting...' : 'Delete Invoices' }}
+        </button>
+      </div>
+    </Modal>
   </div>
 </template>
