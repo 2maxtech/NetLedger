@@ -6,6 +6,7 @@ import { useImpersonate } from '../../composables/useImpersonate'
 import { useToast } from '../../composables/useToast'
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
+import ChatWidget from '../ChatWidget.vue'
 
 const { user, isLoading, isAuthenticated, init } = useAuth()
 const { impersonating, isImpersonating, exitOrg } = useImpersonate()
@@ -116,5 +117,8 @@ function handleExit() {
         {{ toastMessage }}
       </div>
     </Transition>
+
+    <!-- AI Chat Widget (tenant admins only, not demo, not super_admin) -->
+    <ChatWidget v-if="isAuthenticated && !user?.is_demo && user?.role !== 'super_admin'" mode="tenant" />
   </div>
 </template>

@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     THROTTLE_DOWNLOAD_MBPS: int = 1
     THROTTLE_UPLOAD_KBPS: int = 512
 
+    # AI Chat (Claude)
+    ANTHROPIC_API_KEY: str = ""
+
     # Email notifications (configure via .env)
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
