@@ -207,6 +207,7 @@ async def seed_demo_data() -> None:
             ("smtp_from", "billing@sample-isp.net"),
             ("smtp_from_name", "Sample ISP Billing"),
             ("sms_provider", "semaphore"),
+            ("sms_api_key", "demo_api_key_not_real"),
             ("sms_sender_name", "SampleISP"),
             ("company_name", "Sample ISP"),
             ("onboarding_dismissed", "true"),
