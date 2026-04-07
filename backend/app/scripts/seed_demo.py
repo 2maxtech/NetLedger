@@ -20,6 +20,7 @@ from app.models.payment import Payment, PaymentMethod
 from app.models.plan import Plan
 from app.models.router import Area, Router
 from app.models.user import User, UserRole
+from app.models.app_setting import AppSetting
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +195,25 @@ async def seed_demo_data() -> None:
                     owner_id=owner_id,
                 )
                 db.add(payment)
+
+        # --- App Settings (billing config + dismiss onboarding) ---
+        demo_settings = [
+            ("billing_default_due_day", "15"),
+            ("billing_grace_days", "7"),
+            ("billing_send_invoice_email", "true"),
+            ("billing_send_invoice_sms", "true"),
+            ("smtp_host", "mail.sample-isp.net"),
+            ("smtp_port", "587"),
+            ("smtp_from", "billing@sample-isp.net"),
+            ("smtp_from_name", "Sample ISP Billing"),
+            ("sms_provider", "semaphore"),
+            ("sms_sender_name", "SampleISP"),
+            ("company_name", "Sample ISP"),
+            ("onboarding_dismissed", "true"),
+        ]
+        for key, value in demo_settings:
+            setting = AppSetting(key=key, value=value, owner_id=owner_id)
+            db.add(setting)
 
         await db.commit()
         logger.info("Demo data seeded successfully (15 customers, 4 plans, 1 router, 2 areas)")
