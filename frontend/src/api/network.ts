@@ -79,7 +79,7 @@ export function importSubscribers() {
   return api.post('/network/import')
 }
 
-export function scanNetwork(data: { subnet: string; timeout?: number }) {
+export function scanNetwork(data: { subnet: string; username?: string; password?: string }) {
   return api.post('/network/scan', data)
 }
 
