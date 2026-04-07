@@ -120,12 +120,11 @@ onBeforeUnmount(() => {
               <th class="px-4 py-3 font-medium text-gray-500">MAC (Caller ID)</th>
               <th class="px-4 py-3 font-medium text-gray-500">Service</th>
               <th class="px-4 py-3 font-medium text-gray-500">Uptime</th>
-              <th class="px-4 py-3 font-medium text-gray-500">Encoding</th>
             </tr>
           </thead>
           <tbody v-if="loading && sessions.length === 0">
             <tr>
-              <td colspan="7" class="px-4 py-12 text-center text-gray-400">
+              <td colspan="6" class="px-4 py-12 text-center text-gray-400">
                 <svg class="w-6 h-6 animate-spin mx-auto mb-2 text-primary" viewBox="0 0 24 24" fill="none"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
                 Loading sessions...
               </td>
@@ -133,7 +132,7 @@ onBeforeUnmount(() => {
           </tbody>
           <tbody v-else-if="sessions.length === 0">
             <tr>
-              <td colspan="7" class="px-4 py-12 text-center text-gray-400">
+              <td colspan="6" class="px-4 py-12 text-center text-gray-400">
                 <svg class="w-10 h-10 mx-auto mb-2 text-gray-300" viewBox="0 0 20 20" fill="currentColor"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v1h8v-1zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-1a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 17v1h-3zM4.75 14.094A5.973 5.973 0 004 17v1H1v-1a3 3 0 013.75-2.906z"/></svg>
                 No active sessions found.
               </td>
@@ -158,7 +157,6 @@ onBeforeUnmount(() => {
                   {{ s.uptime }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-gray-500">{{ s.encoding }}</td>
             </tr>
           </tbody>
         </table>
