@@ -73,7 +73,6 @@ const ispMenu: MenuItem[] = [
     label: 'System', icon: 'settings', children: [
       { path: '/settings', label: 'Settings' },
       { path: '/system/users', label: 'Staff Users' },
-      { path: '/ipam', label: 'IPAM' },
       { path: '/audit-logs', label: 'Audit Logs' },
       { path: '/system/status', label: 'System Status' },
       { path: '/system/logs', label: 'Logs' },
