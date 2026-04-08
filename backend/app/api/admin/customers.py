@@ -9,11 +9,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.tenant import get_tenant_id
+from app.models.bandwidth_usage import BandwidthUsage
 from app.models.customer import Customer, CustomerStatus
+from app.models.customer_activity import CustomerActivity
 from app.models.disconnect_log import DisconnectAction, DisconnectLog, DisconnectReason
 from app.models.invoice import Invoice
 from app.models.notification import Notification, NotificationStatus, NotificationType
 from app.models.payment import Payment
+from app.models.pppoe_session import PPPoESession
+from app.models.session_traffic import SessionTraffic
 from app.models.ticket import Ticket, TicketMessage
 from app.models.user import User
 from app.schemas.customer import (
@@ -336,11 +340,43 @@ async def update_customer(
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
 
-    for field, value in body.model_dump(exclude_unset=True).items():
+    updated_fields = body.model_dump(exclude_unset=True)
+    for field, value in updated_fields.items():
         setattr(customer, field, value)
 
     await db.flush()
-    await db.refresh(customer)
+    await db.refresh(customer, ['plan'])
+
+    # Sync PPPoE credential / plan changes to MikroTik
+    mt_fields = {"pppoe_password", "pppoe_username", "mac_address", "plan_id"}
+    if mt_fields & updated_fields.keys() and customer.mikrotik_secret_id:
+        try:
+            client, _ = await get_client_for_customer(db, customer)
+            if client:
+                secret_update: dict[str, str] = {}
+                if "pppoe_password" in updated_fields:
+                    secret_update["password"] = customer.pppoe_password
+                if "pppoe_username" in updated_fields:
+                    secret_update["name"] = customer.pppoe_username
+                if "mac_address" in updated_fields:
+                    secret_update["caller-id"] = customer.mac_address or ""
+                if "plan_id" in updated_fields and customer.plan:
+                    plan = customer.plan
+                    profile_name = plan.name
+                    rate_limit = f"{plan.upload_mbps}M/{plan.download_mbps}M"
+                    await client.ensure_profile(
+                        profile_name, rate_limit,
+                        local_address=plan.local_address,
+                        remote_address=plan.remote_address,
+                        dns_server=plan.dns_server,
+                        parent_queue=plan.parent_queue,
+                    )
+                    secret_update["profile"] = profile_name
+                if secret_update:
+                    await client.update_secret(customer.mikrotik_secret_id, secret_update)
+        except Exception as e:
+            logger.warning(f"MikroTik sync failed for customer {customer.id}: {e}")
+
     return customer
 
 
@@ -395,6 +431,15 @@ async def delete_customer(
     await db.execute(Invoice.__table__.delete().where(Invoice.customer_id == customer_id))
     await db.execute(DisconnectLog.__table__.delete().where(DisconnectLog.customer_id == customer_id))
     await db.execute(Notification.__table__.delete().where(Notification.customer_id == customer_id))
+    # Delete session traffic (via session FK), then PPPoE sessions
+    await db.execute(
+        SessionTraffic.__table__.delete().where(
+            SessionTraffic.session_id.in_(select(PPPoESession.id).where(PPPoESession.customer_id == customer_id))
+        )
+    )
+    await db.execute(PPPoESession.__table__.delete().where(PPPoESession.customer_id == customer_id))
+    await db.execute(BandwidthUsage.__table__.delete().where(BandwidthUsage.customer_id == customer_id))
+    await db.execute(CustomerActivity.__table__.delete().where(CustomerActivity.customer_id == customer_id))
     # Delete ticket messages (via ticket FK), then tickets
     await db.execute(
         TicketMessage.__table__.delete().where(
