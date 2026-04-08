@@ -73,8 +73,8 @@ async function createAndTestRouter() {
       const { data } = await apiCreateRouter({
         name: routerForm.name || 'My Router',
         url: 'http://pending-vpn',
-        username: 'admin',
-        password: 'pending',
+        username: routerForm.username,
+        password: routerForm.password,
       })
       routerCreated.value = data
       // Start VPN setup
@@ -356,25 +356,25 @@ onMounted(async () => {
             <input v-model="routerForm.name" type="text" placeholder="e.g. Main Router" class="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:border-primary focus:outline-none" />
           </div>
 
-          <!-- Self-hosted: direct connection fields -->
+          <!-- Router credentials (both SaaS and self-hosted need these) -->
           <template v-if="!isSaaS">
             <div>
               <label class="block text-sm font-medium text-gray-300 mb-1">Router URL</label>
               <input v-model="routerForm.url" type="text" placeholder="http://192.168.88.1" class="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:border-primary focus:outline-none" />
             </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1">Username</label>
-                <input v-model="routerForm.username" type="text" class="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-primary focus:outline-none" />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1">Password</label>
-                <input v-model="routerForm.password" type="password" class="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-primary focus:outline-none" />
-              </div>
-            </div>
           </template>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-1">Router Username</label>
+              <input v-model="routerForm.username" type="text" class="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white focus:border-primary focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-300 mb-1">Router Password</label>
+              <input v-model="routerForm.password" type="password" placeholder="MikroTik admin password" class="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:border-primary focus:outline-none" />
+            </div>
+          </div>
 
-          <button @click="createAndTestRouter" :disabled="loading || (!isSaaS && !routerForm.url)" class="w-full py-3 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold transition-colors disabled:opacity-50">
+          <button @click="createAndTestRouter" :disabled="loading || (!isSaaS && !routerForm.url) || !routerForm.password" class="w-full py-3 rounded-xl bg-primary hover:bg-primary-hover text-white font-semibold transition-colors disabled:opacity-50">
             {{ loading ? 'Connecting...' : (isSaaS ? 'Connect via VPN' : 'Test Connection') }}
           </button>
         </div>
