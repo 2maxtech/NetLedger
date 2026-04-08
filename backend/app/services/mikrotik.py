@@ -233,13 +233,15 @@ class MikroTikClient:
                     updates["dns-server"] = dns_server
                 if parent_queue is not None and p.get("parent-queue", "") != parent_queue:
                     updates["parent-queue"] = parent_queue
+                if p.get("only-one") != "yes":
+                    updates["only-one"] = "yes"
                 if updates:
                     await self._request("PATCH", f"ppp/profile/{p['.id']}", json=updates)
                     logger.info("Updated profile '%s': %s", name, updates)
                 return name
 
         # Create new profile
-        payload = {"name": name, "rate-limit": rate_limit}
+        payload = {"name": name, "rate-limit": rate_limit, "only-one": "yes"}
         if local_address:
             payload["local-address"] = local_address
         if remote_address:
