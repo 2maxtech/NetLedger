@@ -1,4 +1,5 @@
 import json
+import uuid
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -7,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.tenant import get_tenant_id
 from app.models.app_setting import AppSetting
 from app.models.user import User
 
@@ -41,12 +43,14 @@ async def get_system_logs(
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    tenant_id: str = Depends(get_tenant_id),
 ):
     """Get recent audit log entries."""
     from app.models.audit_log import AuditLog
     from sqlalchemy import desc
 
-    query = select(AuditLog).order_by(desc(AuditLog.created_at)).limit(limit)
+    tid = uuid.UUID(tenant_id)
+    query = select(AuditLog).where(AuditLog.owner_id == tid).order_by(desc(AuditLog.created_at)).limit(limit)
     if level != "all":
         query = query.where(AuditLog.action == level)
     result = await db.execute(query)

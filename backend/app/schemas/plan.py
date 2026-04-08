@@ -14,6 +14,10 @@ class PlanCreate(BaseModel):
     data_cap_gb: int | None = None
     fup_download_mbps: int | None = None
     fup_upload_mbps: int | None = None
+    local_address: str | None = None
+    remote_address: str | None = None
+    dns_server: str | None = None
+    parent_queue: str | None = None
 
 
 class PlanUpdate(BaseModel):
@@ -26,6 +30,10 @@ class PlanUpdate(BaseModel):
     data_cap_gb: int | None = None
     fup_download_mbps: int | None = None
     fup_upload_mbps: int | None = None
+    local_address: str | None = None
+    remote_address: str | None = None
+    dns_server: str | None = None
+    parent_queue: str | None = None
 
 
 class PlanResponse(BaseModel):
@@ -40,5 +48,9 @@ class PlanResponse(BaseModel):
     data_cap_gb: int | None = None
     fup_download_mbps: int | None = None
     fup_upload_mbps: int | None = None
+    local_address: str | None = None
+    remote_address: str | None = None
+    dns_server: str | None = None
+    parent_queue: str | None = None
 
     model_config = {"from_attributes": True}

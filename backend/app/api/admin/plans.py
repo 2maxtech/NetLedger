@@ -11,7 +11,8 @@ from app.core.tenant import get_tenant_id
 from app.models.plan import Plan
 from app.models.user import User
 from app.schemas.plan import PlanCreate, PlanResponse, PlanUpdate
-from app.services.mikrotik import mikrotik
+from app.models.router import Router
+from app.services.mikrotik import get_mikrotik_client
 
 logger = logging.getLogger(__name__)
 
@@ -87,22 +88,32 @@ async def update_plan(
     await db.flush()
     await db.refresh(plan)
 
-    # Sync to MikroTik if speeds changed
+    # Sync to MikroTik if speeds changed — iterate tenant's routers
     if plan.download_mbps != old_download or plan.upload_mbps != old_upload:
-        try:
-            old_profile = f"{old_download}M-{old_upload}M"
-            new_profile = f"{plan.download_mbps}M-{plan.upload_mbps}M"
-            new_rate = f"{plan.upload_mbps}M/{plan.download_mbps}M"
-            await mikrotik.ensure_profile(new_profile, new_rate)
+        old_profile = f"{old_download}M-{old_upload}M"
+        new_profile = f"{plan.download_mbps}M-{plan.upload_mbps}M"
+        new_rate = f"{plan.upload_mbps}M/{plan.download_mbps}M"
 
-            # Update all secrets using the old profile to the new one
-            secrets = await mikrotik.get_secrets()
-            for s in secrets:
-                if s.get("profile") == old_profile:
-                    await mikrotik.update_secret(s[".id"], {"profile": new_profile})
-            logger.info(f"Plan '{plan.name}' synced to MikroTik: {old_profile} → {new_profile}")
-        except Exception as e:
-            logger.warning(f"MikroTik profile sync failed for plan {plan.id}: {e}")
+        routers_result = await db.execute(
+            select(Router).where(Router.owner_id == tid, Router.is_active == True)
+        )
+        tenant_routers = routers_result.scalars().all()
+
+        for r in tenant_routers:
+            try:
+                client = get_mikrotik_client(
+                    router_id=str(r.id), url=r.url,
+                    user=r.username, password=r.password,
+                )
+                await client.ensure_profile(new_profile, new_rate)
+
+                secrets = await client.get_secrets()
+                for s in secrets:
+                    if s.get("profile") == old_profile:
+                        await client.update_secret(s[".id"], {"profile": new_profile})
+                logger.info(f"Plan '{plan.name}' synced on router {r.name}: {old_profile} → {new_profile}")
+            except Exception as e:
+                logger.warning(f"MikroTik profile sync failed on router {r.name} for plan {plan.id}: {e}")
 
     return plan
 

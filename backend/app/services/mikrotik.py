@@ -429,9 +429,9 @@ async def get_customer_router(db, customer):
         if router and router.is_active:
             return router
 
-    # 3. System default (first active router)
+    # 3. Tenant default (first active router for the same owner)
     result = await db.execute(
-        select(Router).where(Router.is_active == True).order_by(Router.created_at).limit(1)
+        select(Router).where(Router.is_active == True, Router.owner_id == customer.owner_id).order_by(Router.created_at).limit(1)
     )
     return result.scalar_one_or_none()
 
