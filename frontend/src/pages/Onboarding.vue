@@ -58,7 +58,7 @@ const summary = reactive({
   disconnectDays: 5,
 })
 
-const stepLabels = ['Connect Router', 'Customers', 'Billing', 'Ready']
+const stepLabels = ['Connect Router', 'Billing', 'Customers', 'Ready']
 
 // ========================
 // Step 1: Router
@@ -260,8 +260,8 @@ function nextStep() {
   }
   if (step.value < 4) {
     step.value++
-    // Auto-load import preview when entering step 2 with a connected router
-    if (step.value === 2 && routerConnected.value && !previewData.value) {
+    // Auto-load import preview when entering step 3 with a connected router
+    if (step.value === 3 && routerConnected.value && !previewData.value) {
       loadImportPreview()
     }
   }
@@ -277,7 +277,7 @@ function prevStep() {
 function skipStep() {
   error.value = ''
   // Save defaults when skipping billing
-  if (step.value === 3 && !billingSaved.value) {
+  if (step.value === 2 && !billingSaved.value) {
     saveBillingSettings(billing).catch(() => {})
     summary.dueDay = parseInt(billing.billing_default_due_day)
     summary.throttleDays = parseInt(billing.billing_throttle_days_after_due)
@@ -422,8 +422,8 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- ==================== STEP 2: Customers ==================== -->
-      <div v-if="step === 2">
+      <!-- ==================== STEP 3: Customers ==================== -->
+      <div v-if="step === 3">
         <h2 class="text-2xl font-bold text-white mb-2">Add Your Customers</h2>
         <p class="text-gray-400 mb-6">
           {{ routerConnected ? 'Import existing PPPoE accounts from your router, or add them manually later.' : 'Create your first plan and customer to get started.' }}
@@ -555,8 +555,8 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- ==================== STEP 3: Billing ==================== -->
-      <div v-if="step === 3">
+      <!-- ==================== STEP 2: Billing ==================== -->
+      <div v-if="step === 2">
         <h2 class="text-2xl font-bold text-white mb-2">Billing Settings</h2>
         <p class="text-gray-400 mb-6">Set your billing rules. You can change these anytime in Settings.</p>
 
