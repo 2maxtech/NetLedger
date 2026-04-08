@@ -110,7 +110,7 @@ async def create_customer(
     customer.owner_id = uuid.UUID(tenant_id)
     db.add(customer)
     await db.flush()
-    await db.refresh(customer)
+    await db.refresh(customer, ['plan', 'area'])
 
     # Auto-provision PPPoE secret on MikroTik with plan profile
     try:
