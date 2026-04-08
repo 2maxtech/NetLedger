@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_role
 from app.core.tenant import get_tenant_id
+from app.models.customer import Customer
 from app.models.router import Area
 from app.models.user import User
 from app.schemas.router import AreaCreate, AreaResponse, AreaUpdate
@@ -74,5 +75,9 @@ async def delete_area(
     a = result.scalar_one_or_none()
     if a is None:
         raise HTTPException(status_code=404, detail="Area not found")
+    # Unlink customers referencing this area to avoid FK violation
+    await db.execute(
+        Customer.__table__.update().where(Customer.area_id == area_id).values(area_id=None)
+    )
     await db.delete(a)
     await db.flush()

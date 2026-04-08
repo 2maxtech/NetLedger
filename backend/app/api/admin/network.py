@@ -6,7 +6,7 @@ from datetime import date, datetime, timezone
 from decimal import Decimal
 
 import httpx
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 

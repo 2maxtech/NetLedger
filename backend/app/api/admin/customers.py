@@ -14,6 +14,7 @@ from app.models.disconnect_log import DisconnectAction, DisconnectLog, Disconnec
 from app.models.invoice import Invoice
 from app.models.notification import Notification, NotificationStatus, NotificationType
 from app.models.payment import Payment
+from app.models.ticket import Ticket, TicketMessage
 from app.models.user import User
 from app.schemas.customer import (
     BulkActionResponse,
@@ -394,6 +395,13 @@ async def delete_customer(
     await db.execute(Invoice.__table__.delete().where(Invoice.customer_id == customer_id))
     await db.execute(DisconnectLog.__table__.delete().where(DisconnectLog.customer_id == customer_id))
     await db.execute(Notification.__table__.delete().where(Notification.customer_id == customer_id))
+    # Delete ticket messages (via ticket FK), then tickets
+    await db.execute(
+        TicketMessage.__table__.delete().where(
+            TicketMessage.ticket_id.in_(select(Ticket.id).where(Ticket.customer_id == customer_id))
+        )
+    )
+    await db.execute(Ticket.__table__.delete().where(Ticket.customer_id == customer_id))
 
     await log_action(db, current_user.id, "customer.delete", "customer", customer.id, details=f"deleted {username}", owner_id=tid)
     await db.delete(customer)
