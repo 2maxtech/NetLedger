@@ -6,6 +6,7 @@ correct arguments. MikroTik I/O is mocked at the get_client_for_customer
 boundary so the rest of the stack (DB, auth, routing) runs for real.
 """
 import uuid
+from contextlib import contextmanager
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -17,6 +18,12 @@ from app.models.plan import Plan
 from app.models.router import Router
 
 API = settings.API_V1_PREFIX
+
+# All modules that import get_client_for_customer — patch them all
+_GCFC_PATHS = [
+    "app.api.admin.customers.get_client_for_customer",
+    "app.services.nat_redirect.get_client_for_customer",
+]
 
 # ---------------------------------------------------------------------------
 # Mock MikroTik client
@@ -34,7 +41,26 @@ def _mock_mt_client():
     mt.kick_session.return_value = True
     mt.get_secret.return_value = {".id": "*NEW_SECRET", "name": "juan"}
     mt.get_active_sessions.return_value = []
+    mt.remove_nat_redirect.return_value = None
+    mt.add_nat_redirect.return_value = "*NAT1"
+    mt.get_nat_redirects.return_value = []
     return mt
+
+
+@contextmanager
+def mock_mikrotik(mt=None):
+    """Patch get_client_for_customer everywhere it's imported."""
+    if mt is None:
+        mt = _mock_mt_client()
+    mock_return = AsyncMock(return_value=(mt, "router-id"))
+    patches = [patch(p, mock_return) for p in _GCFC_PATHS]
+    for p in patches:
+        p.start()
+    try:
+        yield mt
+    finally:
+        for p in patches:
+            p.stop()
 
 
 # ---------------------------------------------------------------------------
@@ -107,13 +133,8 @@ def customer_payload(plan_id: str, suffix: str = "") -> dict:
 # ---------------------------------------------------------------------------
 
 async def create_customer_with_mt(client, auth_headers, plan_id, suffix=""):
-    """POST /customers/ with MikroTik mocked. Returns (data, mt_mock)."""
-    mt = _mock_mt_client()
-    with patch(
-        "app.api.admin.customers.get_client_for_customer",
-        new_callable=AsyncMock,
-        return_value=(mt, "router-id"),
-    ):
+    """POST /customers/ with MikroTik mocked. Returns (data, mt_mock, status)."""
+    with mock_mikrotik() as mt:
         resp = await client.post(
             f"{API}/customers/",
             json=customer_payload(str(plan_id), suffix),
@@ -157,15 +178,10 @@ async def test_create_customer_syncs_to_mikrotik(client, auth_headers, test_plan
 @pytest.mark.asyncio
 async def test_create_customer_with_mac_syncs_caller_id(client, auth_headers, test_plan, test_router):
     """MAC address must be passed as caller-id to MikroTik."""
-    mt = _mock_mt_client()
     payload = customer_payload(str(test_plan.id), "_mac")
     payload["mac_address"] = "AA:BB:CC:DD:EE:FF"
 
-    with patch(
-        "app.api.admin.customers.get_client_for_customer",
-        new_callable=AsyncMock,
-        return_value=(mt, "router-id"),
-    ):
+    with mock_mikrotik() as mt:
         resp = await client.post(
             f"{API}/customers/",
             json=payload,
@@ -180,16 +196,19 @@ async def test_create_customer_with_mac_syncs_caller_id(client, auth_headers, te
 @pytest.mark.asyncio
 async def test_create_customer_still_saved_when_mikrotik_down(client, auth_headers, test_plan, test_router):
     """If MikroTik is unreachable, customer is still created (but no secret_id)."""
-    with patch(
-        "app.api.admin.customers.get_client_for_customer",
-        new_callable=AsyncMock,
-        return_value=(None, None),
-    ):
+    mock_return = AsyncMock(return_value=(None, None))
+    patches = [patch(p, mock_return) for p in _GCFC_PATHS]
+    for p in patches:
+        p.start()
+    try:
         resp = await client.post(
             f"{API}/customers/",
             json=customer_payload(str(test_plan.id), "_nomt"),
             headers=auth_headers,
         )
+    finally:
+        for p in patches:
+            p.stop()
 
     assert resp.status_code == 201
     data = resp.json()
@@ -207,12 +226,7 @@ async def test_disconnect_disables_secret_on_mikrotik(client, auth_headers, test
     data, _, _ = await create_customer_with_mt(client, auth_headers, test_plan.id, "_disc")
     customer_id = data["id"]
 
-    mt = _mock_mt_client()
-    with patch(
-        "app.api.admin.customers.get_client_for_customer",
-        new_callable=AsyncMock,
-        return_value=(mt, "router-id"),
-    ):
+    with mock_mikrotik() as mt:
         resp = await client.post(
             f"{API}/customers/{customer_id}/disconnect",
             headers=auth_headers,
@@ -234,21 +248,11 @@ async def test_reconnect_enables_secret_on_mikrotik(client, auth_headers, test_p
     customer_id = data["id"]
 
     # Disconnect first
-    mt_disc = _mock_mt_client()
-    with patch(
-        "app.api.admin.customers.get_client_for_customer",
-        new_callable=AsyncMock,
-        return_value=(mt_disc, "router-id"),
-    ):
+    with mock_mikrotik():
         await client.post(f"{API}/customers/{customer_id}/disconnect", headers=auth_headers)
 
     # Reconnect
-    mt = _mock_mt_client()
-    with patch(
-        "app.api.admin.customers.get_client_for_customer",
-        new_callable=AsyncMock,
-        return_value=(mt, "router-id"),
-    ):
+    with mock_mikrotik() as mt:
         resp = await client.post(
             f"{API}/customers/{customer_id}/reconnect",
             headers=auth_headers,
@@ -272,12 +276,7 @@ async def test_reconnect_recreates_secret_if_missing(client, auth_headers, test_
     customer_id = data["id"]
 
     # Disconnect
-    mt_disc = _mock_mt_client()
-    with patch(
-        "app.api.admin.customers.get_client_for_customer",
-        new_callable=AsyncMock,
-        return_value=(mt_disc, "router-id"),
-    ):
+    with mock_mikrotik():
         await client.post(f"{API}/customers/{customer_id}/disconnect", headers=auth_headers)
 
     # Reconnect — but the secret was deleted from MikroTik
@@ -285,11 +284,7 @@ async def test_reconnect_recreates_secret_if_missing(client, auth_headers, test_
     mt.get_secret.return_value = None  # secret no longer exists on MT
     mt.create_secret.return_value = "*RECREATED"
 
-    with patch(
-        "app.api.admin.customers.get_client_for_customer",
-        new_callable=AsyncMock,
-        return_value=(mt, "router-id"),
-    ):
+    with mock_mikrotik(mt):
         resp = await client.post(
             f"{API}/customers/{customer_id}/reconnect",
             headers=auth_headers,
@@ -315,11 +310,7 @@ async def test_throttle_changes_profile_on_mikrotik(client, auth_headers, test_p
     mt = _mock_mt_client()
     mt.ensure_profile.return_value = "1M-throttle"
 
-    with patch(
-        "app.api.admin.customers.get_client_for_customer",
-        new_callable=AsyncMock,
-        return_value=(mt, "router-id"),
-    ):
+    with mock_mikrotik(mt):
         resp = await client.post(
             f"{API}/customers/{customer_id}/throttle",
             headers=auth_headers,
@@ -350,11 +341,7 @@ async def test_change_plan_updates_mikrotik_profile(client, auth_headers, test_p
     mt = _mock_mt_client()
     mt.ensure_profile.return_value = "Premium 50Mbps"
 
-    with patch(
-        "app.api.admin.customers.get_client_for_customer",
-        new_callable=AsyncMock,
-        return_value=(mt, "router-id"),
-    ):
+    with mock_mikrotik(mt):
         resp = await client.post(
             f"{API}/customers/{customer_id}/change-plan",
             json={"plan_id": str(second_plan.id)},
@@ -384,12 +371,7 @@ async def test_delete_removes_secret_from_mikrotik(client, auth_headers, test_pl
     data, _, _ = await create_customer_with_mt(client, auth_headers, test_plan.id, "_del")
     customer_id = data["id"]
 
-    mt = _mock_mt_client()
-    with patch(
-        "app.api.admin.customers.get_client_for_customer",
-        new_callable=AsyncMock,
-        return_value=(mt, "router-id"),
-    ):
+    with mock_mikrotik() as mt:
         resp = await client.post(
             f"{API}/customers/{customer_id}/delete",
             json={"password": "admin123"},
