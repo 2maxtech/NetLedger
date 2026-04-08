@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.models.app_setting import AppSetting
 from app.models.customer import Customer
-from app.services.mikrotik import MikroTikClient, get_client_for_customer
+from app.services.mikrotik import get_client_for_customer
 
 logger = logging.getLogger(__name__)
 
