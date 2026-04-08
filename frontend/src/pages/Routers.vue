@@ -182,14 +182,21 @@ async function saveRouter() {
       maintenance_message: form.maintenance_message || null,
     }
     if (form.password) payload.password = form.password
+    let createdRouter: RouterType | null = null
     if (editingRouter.value) {
       await updateRouter(editingRouter.value.id, payload)
     } else {
       payload.password = form.password
-      await createRouter(payload)
+      const { data } = await createRouter(payload)
+      createdRouter = data
     }
     showModal.value = false
     await loadRouters()
+
+    // Auto-open VPN setup after creating a new router in SaaS mode
+    if (createdRouter && isSaaS) {
+      startVpnSetup(createdRouter)
+    }
   } catch (e) {
     console.error('Failed to save router', e)
   } finally {
