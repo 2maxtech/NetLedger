@@ -160,7 +160,7 @@ onMounted(fetchLogs)
                   </svg>
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-700">{{ dayjs(log.created_at).format('MMM D, YYYY h:mm A') }}</td>
-                <td class="px-4 py-3 text-sm text-gray-500 font-mono">{{ shortId(log.user_id) }}</td>
+                <td class="px-4 py-3 text-sm text-gray-700">{{ log.user_name || shortId(log.user_id) }}</td>
                 <td class="px-4 py-3 text-sm text-gray-700 font-medium">{{ log.action }}</td>
                 <td class="px-4 py-3">
                   <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">

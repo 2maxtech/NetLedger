@@ -1,7 +1,8 @@
 import uuid
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,13 +11,12 @@ from app.core.dependencies import get_current_user
 from app.core.tenant import get_tenant_id
 from app.models.audit_log import AuditLog
 from app.models.user import User
-from pydantic import BaseModel
-from datetime import datetime
 
 
 class AuditLogResponse(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID | None
+    user_name: str | None = None
     action: str
     entity_type: str
     entity_id: uuid.UUID | None
@@ -56,4 +56,19 @@ async def list_audit_logs(
 
     query = query.order_by(AuditLog.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(query)
-    return result.scalars().all()
+    logs = result.scalars().all()
+
+    # Resolve user names
+    user_ids = {log.user_id for log in logs if log.user_id}
+    name_map: dict[uuid.UUID, str] = {}
+    if user_ids:
+        users_result = await db.execute(select(User).where(User.id.in_(user_ids)))
+        for u in users_result.scalars().all():
+            name_map[u.id] = u.full_name or u.username
+
+    responses = []
+    for log in logs:
+        resp = AuditLogResponse.model_validate(log)
+        resp.user_name = name_map.get(log.user_id) if log.user_id else None
+        responses.append(resp)
+    return responses

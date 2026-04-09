@@ -370,8 +370,7 @@ function formatDate(s: string): string {
         </div>
 
         <!-- RIGHT COLUMN — Router cards stacking vertically -->
-        <div class="space-y-4">
-          <p class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">MikroTik Routers</p>
+        <div class="space-y-3">
           <div
             v-for="r in routers"
             :key="r.id"

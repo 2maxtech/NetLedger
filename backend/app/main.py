@@ -49,6 +49,10 @@ async def create_tables():
         await conn.execute(text(
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'"
         ))
+        # Add 'staff' to userrole enum if missing
+        await conn.execute(text(
+            "ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'staff'"
+        ))
 
     # Seed demo tenant (skips if already present)
     from app.scripts.seed_demo import seed_demo_data
