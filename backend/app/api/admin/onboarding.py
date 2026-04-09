@@ -11,7 +11,7 @@ from app.models.app_setting import AppSetting
 from app.models.customer import Customer
 from app.models.plan import Plan
 from app.models.router import Router
-from app.models.user import User
+from app.models.user import STAFF_ROLES, User, UserRole
 
 router = APIRouter(prefix="/onboarding", tags=["onboarding"])
 
@@ -23,6 +23,15 @@ async def onboarding_status(
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Return onboarding checklist status for the current tenant."""
+    # Staff users skip onboarding entirely
+    if current_user.role in STAFF_ROLES:
+        return {
+            "dismissed": True,
+            "completed": 5,
+            "total": 5,
+            "steps": [],
+        }
+
     tid = uuid.UUID(tenant_id)
 
     # Check routers

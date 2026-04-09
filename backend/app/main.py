@@ -42,8 +42,13 @@ async def create_tables():
     """Auto-create database tables on startup if they don't exist."""
     from app.core.database import engine
     from app.models.base import Base
+    from sqlalchemy import text
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Auto-add permissions column if missing (existing installs)
+        await conn.execute(text(
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS permissions JSONB DEFAULT '[]'"
+        ))
 
     # Seed demo tenant (skips if already present)
     from app.scripts.seed_demo import seed_demo_data

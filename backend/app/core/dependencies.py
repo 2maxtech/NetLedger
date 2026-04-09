@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import decode_token
-from app.models.user import User, UserRole
+from app.models.user import STAFF_ROLES, User, UserRole
 
 security_scheme = HTTPBearer()
 
@@ -43,3 +43,20 @@ def require_role(*roles):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
         return current_user
     return role_checker
+
+
+def require_permission(*perms: str):
+    """Check module-level permissions. Admins bypass; staff must have the permission."""
+    async def checker(current_user: User = Depends(get_current_user)) -> User:
+        # super_admin and admin have all permissions
+        if current_user.role in (UserRole.super_admin, UserRole.admin):
+            return current_user
+        # Staff roles: check permissions list
+        user_perms = current_user.permissions or []
+        if not any(p in user_perms for p in perms):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You don't have permission to access this resource",
+            )
+        return current_user
+    return checker

@@ -11,7 +11,7 @@ from sqlalchemy import and_, extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_role
+from app.core.dependencies import get_current_user, require_permission, require_role
 from app.core.tenant import get_tenant_id
 from app.models.customer import Customer, CustomerStatus
 from app.models.invoice import Invoice, InvoiceStatus
@@ -325,7 +325,7 @@ async def get_subscribers(current_user: User = Depends(get_current_user), tenant
 @router.post("/import")
 async def import_from_mikrotik(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("network")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Import existing PPPoE secrets and profiles from MikroTik into NetLedger.
@@ -464,7 +464,7 @@ async def import_from_mikrotik(
 @router.post("/scan")
 async def scan_network(
     body: dict,
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("network")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Scan a subnet for MikroTik devices."""

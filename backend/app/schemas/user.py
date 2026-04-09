@@ -14,6 +14,7 @@ class UserResponse(BaseModel):
     company_name: str | None = None
     phone: str | None = None
     role: UserRole
+    permissions: list[str] = []
     is_active: bool
     is_demo: bool = False
     created_at: datetime
@@ -26,6 +27,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     role: UserRole = UserRole.admin
+    permissions: list[str] = []
 
 
 class UserUpdate(BaseModel):
@@ -33,4 +35,5 @@ class UserUpdate(BaseModel):
     email: EmailStr | None = None
     password: str | None = None
     role: UserRole | None = None
+    permissions: list[str] | None = None
     is_active: bool | None = None

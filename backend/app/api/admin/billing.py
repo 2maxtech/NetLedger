@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_role
+from app.core.dependencies import get_current_user, require_permission, require_role
 from app.core.tenant import get_tenant_id
 from app.models.customer import Customer
 from app.models.invoice import Invoice, InvoiceStatus
@@ -128,7 +128,7 @@ async def list_invoices(
 async def bulk_mark_paid(
     body: BulkInvoiceIdsRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.admin, UserRole.billing)),
+    current_user: User = Depends(require_permission("billing")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Mark multiple invoices as paid with today's date and create payment records."""
@@ -195,7 +195,7 @@ async def bulk_mark_paid(
 async def bulk_delete_invoices(
     body: BulkInvoiceDeleteRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.admin)),
+    current_user: User = Depends(require_permission("billing")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Delete multiple invoices. Requires admin password confirmation. Cannot delete paid invoices."""
@@ -402,7 +402,7 @@ async def download_invoice_pdf(
 async def generate_invoices(
     body: InvoiceGenerateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.admin, UserRole.billing)),
+    current_user: User = Depends(require_permission("billing")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     tid = uuid.UUID(tenant_id)
@@ -423,7 +423,7 @@ async def update_invoice(
     invoice_id: uuid.UUID,
     body: InvoiceUpdateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.admin, UserRole.billing)),
+    current_user: User = Depends(require_permission("billing")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     tid = uuid.UUID(tenant_id)
@@ -462,7 +462,7 @@ async def update_invoice(
 async def delete_invoice(
     invoice_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.admin, UserRole.billing)),
+    current_user: User = Depends(require_permission("billing")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     tid = uuid.UUID(tenant_id)
@@ -556,7 +556,7 @@ async def list_payments(
 async def create_payment(
     body: PaymentCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.admin, UserRole.billing)),
+    current_user: User = Depends(require_permission("billing")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     tid = uuid.UUID(tenant_id)
@@ -596,7 +596,7 @@ async def revenue_summary(
     from_date: date = Query(...),
     to_date: date = Query(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role(UserRole.admin, UserRole.billing)),
+    current_user: User = Depends(require_permission("billing")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     tid = uuid.UUID(tenant_id)

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_role
+from app.core.dependencies import get_current_user, require_permission, require_role
 from app.core.tenant import get_tenant_id
 from app.models.customer import Customer
 from app.models.router import Area
@@ -30,7 +30,7 @@ async def list_areas(
 async def create_area(
     body: AreaCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("network")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     a = Area(**body.model_dump())
@@ -46,7 +46,7 @@ async def update_area(
     area_id: uuid.UUID,
     body: AreaUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("network")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     tid = uuid.UUID(tenant_id)
@@ -67,7 +67,7 @@ async def update_area(
 async def delete_area(
     area_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("network")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     tid = uuid.UUID(tenant_id)

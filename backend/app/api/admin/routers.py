@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_role
+from app.core.dependencies import get_current_user, require_permission, require_role
 from app.core.tenant import get_tenant_id
 from app.models.app_setting import AppSetting
 from app.models.customer import Customer, CustomerStatus
@@ -34,7 +34,7 @@ async def list_routers(
 async def create_router(
     body: RouterCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("network")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     data = body.model_dump()
@@ -69,7 +69,7 @@ async def update_router(
     router_id: uuid.UUID,
     body: RouterUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("network")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     tid = uuid.UUID(tenant_id)
@@ -94,7 +94,7 @@ async def update_router(
 async def delete_router(
     router_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("network")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     tid = uuid.UUID(tenant_id)
@@ -196,7 +196,7 @@ async def _fetch_mt_data(r: Router):
 async def import_preview(
     router_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("network")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Preview import: returns profiles with speeds and customer count, no data saved."""
@@ -284,7 +284,7 @@ async def import_from_router(
     router_id: uuid.UUID,
     body: ImportRequest | None = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("network")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Import PPPoE secrets and profiles from a specific router into NetLedger."""

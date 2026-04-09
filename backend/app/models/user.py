@@ -1,7 +1,7 @@
 import enum
 import uuid
 
-from sqlalchemy import Boolean, Enum, ForeignKey, String
+from sqlalchemy import Boolean, Enum, ForeignKey, JSON, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -11,8 +11,23 @@ from app.models.base import BaseModel
 class UserRole(str, enum.Enum):
     super_admin = "super_admin"
     admin = "admin"
-    billing = "billing"
-    technician = "technician"
+    staff = "staff"
+    billing = "billing"       # legacy, treated as staff
+    technician = "technician"  # legacy, treated as staff
+
+
+# Permission module keys
+PERMISSION_MODULES = {
+    "customers": "Customers",
+    "plans": "Plans",
+    "billing": "Billing",
+    "network": "Network & Routers",
+    "hotspot": "Hotspot",
+    "tickets": "Tickets",
+    "settings": "Settings & System",
+}
+
+STAFF_ROLES = {UserRole.staff, UserRole.billing, UserRole.technician}
 
 
 class User(BaseModel):
@@ -27,4 +42,5 @@ class User(BaseModel):
     role: Mapped[UserRole] = mapped_column(Enum(UserRole), nullable=False, default=UserRole.admin)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_demo: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false", nullable=False)
+    permissions: Mapped[list | None] = mapped_column(JSON, nullable=True, default=list)
     owner_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)

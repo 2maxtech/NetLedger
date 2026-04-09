@@ -7,7 +7,8 @@ export interface User {
   full_name: string | null
   company_name: string | null
   phone: string | null
-  role: 'super_admin' | 'admin' | 'billing' | 'technician'
+  role: 'super_admin' | 'admin' | 'staff' | 'billing' | 'technician'
+  permissions: string[]
   is_active: boolean
   is_demo: boolean
   created_at: string

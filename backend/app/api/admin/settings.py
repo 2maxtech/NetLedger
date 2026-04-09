@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_role
+from app.core.dependencies import get_current_user, require_permission, require_role
 from app.core.tenant import get_tenant_id
 from app.models.app_setting import AppSetting
 from app.models.user import User
@@ -48,7 +48,7 @@ async def get_smtp_settings(db: AsyncSession, tenant_id: uuid.UUID | None = None
 @router.get("/smtp")
 async def get_smtp(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Get SMTP settings (password masked)."""
@@ -63,7 +63,7 @@ async def get_smtp(
 async def update_smtp(
     body: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Save SMTP settings."""
@@ -79,7 +79,7 @@ async def update_smtp(
 async def test_smtp(
     body: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Send a test email using stored SMTP settings."""
@@ -122,7 +122,7 @@ async def test_smtp(
 @router.get("/sms")
 async def get_sms(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Get SMS settings (api_key masked)."""
@@ -140,7 +140,7 @@ async def get_sms(
 async def update_sms(
     body: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Save SMS settings."""
@@ -161,7 +161,7 @@ async def update_sms(
 async def test_sms_endpoint(
     body: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Send a test SMS using stored SMS settings."""
@@ -215,7 +215,7 @@ async def get_billing_settings(db: AsyncSession, tenant_id: uuid.UUID | None = N
 @router.get("/billing")
 async def get_billing(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     tid = uuid.UUID(tenant_id)
@@ -226,7 +226,7 @@ async def get_billing(
 async def update_billing(
     body: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     tid = uuid.UUID(tenant_id)
@@ -274,7 +274,7 @@ async def get_template_settings(db: AsyncSession, tenant_id: uuid.UUID | None = 
 @router.get("/notifications")
 async def get_notification_templates(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     tid = uuid.UUID(tenant_id)
@@ -285,7 +285,7 @@ async def get_notification_templates(
 async def update_notification_templates(
     body: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     tid = uuid.UUID(tenant_id)
@@ -331,7 +331,7 @@ async def get_branding_settings(db: AsyncSession, tenant_id: uuid.UUID | None = 
 @router.get("/branding")
 async def get_branding(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Get company branding settings."""
@@ -343,7 +343,7 @@ async def get_branding(
 async def update_branding(
     body: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Save company branding settings."""
@@ -402,7 +402,7 @@ async def get_hotspot_branding_settings(db: AsyncSession, tenant_id: uuid.UUID |
 @router.get("/hotspot-branding")
 async def get_hotspot_branding(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Get hotspot captive portal branding settings."""
@@ -414,7 +414,7 @@ async def get_hotspot_branding(
 async def update_hotspot_branding(
     body: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Save hotspot captive portal branding settings."""
@@ -452,7 +452,7 @@ async def get_payment_settings(db: AsyncSession, tenant_id: uuid.UUID | None = N
 @router.get("/payments")
 async def get_payments(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Get payment gateway settings (secret key masked)."""
@@ -469,7 +469,7 @@ async def get_payments(
 async def update_payments(
     body: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Save payment gateway settings."""
@@ -489,7 +489,7 @@ async def update_payments(
 async def test_payments(
     body: dict,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Test PayMongo API connection with the provided secret key."""
@@ -505,7 +505,7 @@ async def test_payments(
 async def upload_logo(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_role("admin")),
+    current_user: User = Depends(require_permission("settings")),
     tenant_id: str = Depends(get_tenant_id),
 ):
     """Upload company logo image."""

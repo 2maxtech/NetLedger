@@ -8,10 +8,16 @@ from app.core.database import get_db
 from app.core.dependencies import require_role
 from app.core.tenant import get_tenant_id
 from app.core.security import hash_password
-from app.models.user import User, UserRole
+from app.models.user import PERMISSION_MODULES, STAFF_ROLES, User, UserRole
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 
 router = APIRouter(prefix="/system/users", tags=["users"])
+
+
+@router.get("/permissions")
+async def list_permissions():
+    """Return available permission modules for staff configuration."""
+    return [{"key": k, "label": v} for k, v in PERMISSION_MODULES.items()]
 
 # --- Super Admin: Organizations endpoint ---
 org_router = APIRouter(prefix="/system/organizations", tags=["organizations"])
@@ -59,6 +65,7 @@ async def create_user(
         email=body.email,
         password_hash=hash_password(body.password),
         role=body.role,
+        permissions=body.permissions if body.role in STAFF_ROLES else [],
         owner_id=tid,
     )
     db.add(user)
