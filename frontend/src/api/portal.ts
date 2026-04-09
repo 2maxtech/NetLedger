@@ -61,6 +61,10 @@ export function getPortalSessions(params?: { page?: number; size?: number }) {
   return portalApi.get('/sessions', { params })
 }
 
+export function getPortalTicketCounts() {
+  return portalApi.get<{ open: number }>('/tickets/counts')
+}
+
 export function getPortalTickets() {
   return portalApi.get('/tickets')
 }

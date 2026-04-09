@@ -43,6 +43,7 @@ class TicketResponse(BaseModel):
     status: TicketStatus
     priority: TicketPriority
     assigned_to: uuid.UUID | None
+    assigned_to_name: str | None = None
     resolved_at: datetime | None
     created_at: datetime
     messages: list[TicketMessageResponse] = []

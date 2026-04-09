@@ -342,6 +342,21 @@ async def portal_sessions(
 
 # --- Tickets ---
 
+@router.get("/tickets/counts")
+async def portal_ticket_counts(
+    db: AsyncSession = Depends(get_db),
+    customer: Customer = Depends(get_portal_customer),
+):
+    from sqlalchemy import func
+    result = await db.execute(
+        select(func.count()).select_from(Ticket).where(
+            Ticket.customer_id == customer.id,
+            Ticket.status.in_(["open", "in_progress"]),
+        )
+    )
+    return {"open": result.scalar() or 0}
+
+
 @router.get("/tickets")
 async def portal_get_tickets(
     db: AsyncSession = Depends(get_db),
@@ -410,6 +425,19 @@ async def portal_get_ticket(
     ticket = result.scalar_one_or_none()
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
+
+    # Resolve sender names for messages
+    sender_ids = {m.sender_id for m in (ticket.messages or [])}
+    name_map: dict[uuid.UUID, str] = {}
+    if sender_ids:
+        from app.models.user import User
+        users_result = await db.execute(select(User).where(User.id.in_(sender_ids)))
+        for u in users_result.scalars().all():
+            name_map[u.id] = u.full_name or u.username
+        customers_result = await db.execute(select(Customer).where(Customer.id.in_(sender_ids)))
+        for c in customers_result.scalars().all():
+            name_map[c.id] = c.full_name
+
     return {
         "id": str(ticket.id),
         "subject": ticket.subject,
@@ -421,6 +449,7 @@ async def portal_get_ticket(
             {
                 "id": str(m.id),
                 "sender_type": m.sender_type,
+                "sender_name": name_map.get(m.sender_id),
                 "message": m.message,
                 "created_at": m.created_at.isoformat(),
             }
@@ -452,6 +481,19 @@ async def portal_add_message(
     db.add(msg)
     await db.flush()
     await db.refresh(ticket)
+
+    # Resolve sender names
+    sender_ids = {m.sender_id for m in (ticket.messages or [])}
+    name_map: dict[uuid.UUID, str] = {}
+    if sender_ids:
+        from app.models.user import User
+        users_result = await db.execute(select(User).where(User.id.in_(sender_ids)))
+        for u in users_result.scalars().all():
+            name_map[u.id] = u.full_name or u.username
+        customers_result = await db.execute(select(Customer).where(Customer.id.in_(sender_ids)))
+        for c in customers_result.scalars().all():
+            name_map[c.id] = c.full_name
+
     return {
         "id": str(ticket.id),
         "subject": ticket.subject,
@@ -462,6 +504,7 @@ async def portal_add_message(
             {
                 "id": str(m.id),
                 "sender_type": m.sender_type,
+                "sender_name": name_map.get(m.sender_id),
                 "message": m.message,
                 "created_at": m.created_at.isoformat(),
             }

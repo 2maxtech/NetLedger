@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import dayjs from 'dayjs'
-import { getInvoices, generateInvoices, downloadInvoicePdf, deleteInvoice, type Invoice } from '../../api/billing'
+import { getInvoices, generateInvoices, downloadInvoicePdf, deleteInvoice, updateInvoice, type Invoice } from '../../api/billing'
 import { getCustomers, type Customer } from '../../api/customers'
 import { bulkMarkPaid, bulkSendNotification, bulkDeleteInvoices, bulkDownloadPdf } from '../../api/bulk'
 import { useAuth } from '../../composables/useAuth'
@@ -43,6 +43,41 @@ const showCustomerDropdown = ref(false)
 const showDeleteConfirm = ref(false)
 const deleteTarget = ref<Invoice | null>(null)
 const deleteLoading = ref(false)
+
+// Edit invoice
+const showEditModal = ref(false)
+const editTarget = ref<Invoice | null>(null)
+const editForm = ref({ amount: '', due_date: '' })
+const editLoading = ref(false)
+
+function openEditModal(inv: Invoice) {
+  editTarget.value = inv
+  editForm.value = {
+    amount: String(inv.amount),
+    due_date: inv.due_date,
+  }
+  showEditModal.value = true
+}
+
+async function handleEdit() {
+  if (!editTarget.value) return
+  editLoading.value = true
+  try {
+    const payload: Record<string, any> = {}
+    if (editForm.value.amount !== String(editTarget.value.amount)) payload.amount = Number(editForm.value.amount)
+    if (editForm.value.due_date !== editTarget.value.due_date) payload.due_date = editForm.value.due_date
+    if (Object.keys(payload).length) {
+      await updateInvoice(editTarget.value.id, payload)
+    }
+    showEditModal.value = false
+    editTarget.value = null
+    fetchInvoices()
+  } catch (e: any) {
+    alert(e.response?.data?.detail || 'Update failed')
+  } finally {
+    editLoading.value = false
+  }
+}
 
 // Bulk selection
 const selectedIds = ref<Set<string>>(new Set())
@@ -448,6 +483,14 @@ onMounted(fetchInvoices)
               <td class="px-4 py-3 text-right">
                 <div class="flex items-center justify-end gap-1">
                   <button
+                    v-if="inv.status !== 'paid'"
+                    @click="openEditModal(inv)"
+                    title="Edit invoice"
+                    class="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                  >
+                    <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z"/></svg>
+                  </button>
+                  <button
                     @click="handleDownloadPdf(inv)"
                     title="Download PDF"
                     class="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-orange-50 transition-colors"
@@ -624,6 +667,50 @@ onMounted(fetchInvoices)
           {{ bulkLoading ? 'Deleting...' : 'Delete Invoices' }}
         </button>
       </div>
+    </Modal>
+
+    <!-- Edit Invoice Modal -->
+    <Modal :open="showEditModal" title="Edit Invoice" @close="showEditModal = false; editTarget = null">
+      <div v-if="editTarget" class="space-y-4">
+        <div class="rounded-lg bg-gray-50 border border-gray-100 px-4 py-3 text-sm text-gray-700">
+          <strong>{{ editTarget.customer_name }}</strong>
+          <span class="text-gray-400 ml-2">{{ editTarget.status }}</span>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Amount (₱)</label>
+          <input
+            v-model="editForm.amount"
+            type="number"
+            step="0.01"
+            min="0"
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+          />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Due Date</label>
+          <input
+            v-model="editForm.due_date"
+            type="date"
+            class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+          />
+        </div>
+        <p class="text-xs text-gray-400">Changes will be recorded in the audit log.</p>
+      </div>
+      <template #footer>
+        <button
+          @click="showEditModal = false; editTarget = null"
+          class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          @click="handleEdit"
+          :disabled="editLoading"
+          class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary-hover transition-colors disabled:opacity-50"
+        >
+          {{ editLoading ? 'Saving...' : 'Save Changes' }}
+        </button>
+      </template>
     </Modal>
   </div>
 </template>

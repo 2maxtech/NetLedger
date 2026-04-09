@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getPortalTicketCounts } from '../../api/portal'
 
 const route = useRoute()
 const router = useRouter()
@@ -10,6 +11,18 @@ const customer = computed(() => {
   const raw = localStorage.getItem('portal_customer')
   return raw ? JSON.parse(raw) : null
 })
+
+const openTicketCount = ref(0)
+
+async function fetchTicketCounts() {
+  try {
+    const { data } = await getPortalTicketCounts()
+    openTicketCount.value = data.open
+  } catch { /* ignore */ }
+}
+
+onMounted(fetchTicketCounts)
+setInterval(fetchTicketCounts, 60_000)
 
 function logout() {
   localStorage.removeItem('portal_token')
@@ -22,7 +35,7 @@ const navItems = computed(() => [
   { path: `/portal/${slug.value}`, label: 'Dashboard', exact: true },
   { path: `/portal/${slug.value}/invoices`, label: 'Invoices' },
   { path: `/portal/${slug.value}/usage`, label: 'Usage' },
-  { path: `/portal/${slug.value}/tickets`, label: 'Tickets' },
+  { path: `/portal/${slug.value}/tickets`, label: 'Tickets', badge: openTicketCount.value },
 ])
 
 function isActive(item: { path: string; exact?: boolean }) {
@@ -49,13 +62,14 @@ function isActive(item: { path: string; exact?: boolean }) {
               :key="item.path"
               :to="item.path"
               :class="[
-                'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                'relative px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
                 isActive(item)
                   ? 'bg-primary/10 text-primary'
                   : 'text-gray-600 hover:bg-gray-100'
               ]"
             >
               {{ item.label }}
+              <span v-if="item.badge && item.badge > 0" class="ml-1 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] font-bold leading-none rounded-full bg-red-500 text-white">{{ item.badge }}</span>
             </router-link>
           </nav>
           <div class="flex items-center gap-2">

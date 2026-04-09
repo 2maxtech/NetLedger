@@ -432,13 +432,29 @@ async def update_invoice(
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
-    if body.status is not None:
+    # Track changes for audit log
+    changes = []
+    if body.status is not None and body.status != invoice.status:
+        changes.append(f"status: {invoice.status} -> {body.status}")
         invoice.status = body.status
-    if body.amount is not None:
+    if body.amount is not None and body.amount != invoice.amount:
+        changes.append(f"amount: {invoice.amount} -> {body.amount}")
         invoice.amount = body.amount
+    if body.due_date is not None and body.due_date != invoice.due_date:
+        changes.append(f"due_date: {invoice.due_date} -> {body.due_date}")
+        invoice.due_date = body.due_date
 
     await db.flush()
     await db.refresh(invoice)
+
+    if changes:
+        await log_action(
+            db, current_user.id, "invoice.update",
+            "invoice", invoice.id,
+            details=f"customer={invoice.customer_id} {', '.join(changes)}",
+            owner_id=tid,
+        )
+
     return _invoice_to_response(invoice)
 
 

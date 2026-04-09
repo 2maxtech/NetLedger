@@ -103,45 +103,56 @@ async function tryDemo() {
         </div>
         <!-- Hero visual -->
         <div class="relative hidden lg:block">
-          <div class="rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 p-6 shadow-2xl shadow-black/10 dark:shadow-black/30">
-            <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 space-y-4">
-              <div class="flex items-center gap-3 mb-4">
-                <img src="/logo-2.png" class="w-7 h-7" />
+          <div class="rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 border border-gray-200 dark:border-gray-700 p-5 shadow-2xl shadow-black/10 dark:shadow-black/30">
+            <div class="rounded-xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+              <div class="flex items-center gap-3 mb-3">
+                <img src="/logo-2.png" class="w-6 h-6" />
                 <span class="font-bold text-gray-700 dark:text-gray-200 text-sm">NetLedger Dashboard</span>
                 <span class="ml-auto px-2 py-0.5 text-[10px] font-medium bg-green-500/20 text-green-400 rounded-full">Live</span>
               </div>
-              <div class="grid grid-cols-3 gap-3">
-                <div class="rounded-lg bg-orange-500/10 border border-orange-500/20 p-3">
-                  <p class="text-[10px] text-orange-400 font-medium">Subscribers</p>
-                  <p class="text-lg font-bold text-gray-900 dark:text-white">248</p>
+              <!-- 4 stat cards matching real dashboard -->
+              <div class="grid grid-cols-4 gap-2">
+                <div class="rounded-lg bg-white dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600 p-2.5">
+                  <p class="text-[9px] text-gray-400 font-medium uppercase tracking-wider">Subscribers</p>
+                  <p class="text-base font-bold text-gray-900 dark:text-white mt-0.5">248</p>
+                  <p class="text-[9px] text-green-500 mt-0.5">231 active</p>
                 </div>
-                <div class="rounded-lg bg-green-500/10 border border-green-500/20 p-3">
-                  <p class="text-[10px] text-green-400 font-medium">Active</p>
-                  <p class="text-lg font-bold text-gray-900 dark:text-white">231</p>
+                <div class="rounded-lg bg-white dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600 p-2.5">
+                  <p class="text-[9px] text-gray-400 font-medium uppercase tracking-wider">Online Now</p>
+                  <p class="text-base font-bold text-gray-900 dark:text-white mt-0.5">189</p>
+                  <p class="text-[9px] text-amber-500 mt-0.5">12 suspended</p>
                 </div>
-                <div class="rounded-lg bg-blue-500/10 border border-blue-500/20 p-3">
-                  <p class="text-[10px] text-blue-400 font-medium">Online</p>
-                  <p class="text-lg font-bold text-gray-900 dark:text-white">189</p>
+                <div class="rounded-lg bg-white dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600 p-2.5">
+                  <p class="text-[9px] text-gray-400 font-medium uppercase tracking-wider">Revenue</p>
+                  <p class="text-base font-bold text-gray-900 dark:text-white mt-0.5">&#8369;186K</p>
+                  <p class="text-[9px] text-blue-500 mt-0.5">&#8369;175K collected</p>
+                </div>
+                <div class="rounded-lg bg-white dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600 p-2.5">
+                  <p class="text-[9px] text-gray-400 font-medium uppercase tracking-wider">Overdue</p>
+                  <p class="text-base font-bold text-red-500 mt-0.5">&#8369;11.7K</p>
+                  <p class="text-[9px] text-gray-400 mt-0.5">5 invoices</p>
                 </div>
               </div>
-              <div class="flex gap-2">
-                <div class="flex-1 h-2 rounded-full bg-green-500" />
-                <div class="w-6 h-2 rounded-full bg-amber-400" />
-                <div class="w-3 h-2 rounded-full bg-red-400" />
+              <!-- Revenue chart mockup -->
+              <div class="rounded-lg bg-white dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600 p-3">
+                <p class="text-[10px] font-semibold text-gray-700 dark:text-gray-200 mb-2">Revenue Trend</p>
+                <div class="flex items-end gap-1.5 h-12">
+                  <div class="flex-1 bg-primary/20 rounded-sm" style="height:40%" />
+                  <div class="flex-1 bg-primary/30 rounded-sm" style="height:55%" />
+                  <div class="flex-1 bg-primary/40 rounded-sm" style="height:50%" />
+                  <div class="flex-1 bg-primary/50 rounded-sm" style="height:70%" />
+                  <div class="flex-1 bg-primary/60 rounded-sm" style="height:65%" />
+                  <div class="flex-1 bg-primary/80 rounded-sm" style="height:85%" />
+                  <div class="flex-1 bg-primary rounded-sm" style="height:100%" />
+                </div>
               </div>
-              <div class="space-y-2">
-                <div class="flex items-center justify-between text-xs">
-                  <span class="text-gray-400">MikroTik-Main</span>
-                  <span class="text-green-400 font-medium">Connected</span>
+              <!-- Router status -->
+              <div class="flex items-center justify-between text-xs px-1">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full bg-green-500" />
+                  <span class="text-gray-500 dark:text-gray-400">MikroTik-Main</span>
                 </div>
-                <div class="flex items-center justify-between text-xs">
-                  <span class="text-gray-400">MRR</span>
-                  <span class="text-gray-900 dark:text-white font-semibold">&#8369;186,752</span>
-                </div>
-                <div class="flex items-center justify-between text-xs">
-                  <span class="text-gray-400">Collection Rate</span>
-                  <span class="text-gray-900 dark:text-white font-semibold">94.2%</span>
-                </div>
+                <span class="text-green-500 font-medium text-[10px]">Connected</span>
               </div>
             </div>
           </div>

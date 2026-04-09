@@ -5,6 +5,7 @@ import dayjs from 'dayjs'
 import StatusBadge from '../components/common/StatusBadge.vue'
 import { getTicket, updateTicket, addTicketMessage } from '../api/tickets'
 import type { TicketType, TicketMessage } from '../api/tickets'
+import { getUsers } from '../api/users'
 
 const route = useRoute()
 const ticketId = route.params.id as string
@@ -16,6 +17,7 @@ const sending = ref(false)
 
 const messagesContainer = ref<HTMLElement | null>(null)
 const newMessage = ref('')
+const staffUsers = ref<Array<{ id: string; full_name: string | null; username: string }>>([])
 
 const updateForm = ref({
   status: '',
@@ -59,11 +61,11 @@ async function loadTicket() {
 async function handleUpdate() {
   updating.value = true
   try {
-    const payload: Record<string, string> = {}
+    const payload: Record<string, string | null> = {}
     if (updateForm.value.status !== ticket.value?.status) payload.status = updateForm.value.status
     if (updateForm.value.priority !== ticket.value?.priority) payload.priority = updateForm.value.priority
     if (updateForm.value.assigned_to !== (ticket.value?.assigned_to || ''))
-      payload.assigned_to = updateForm.value.assigned_to
+      payload.assigned_to = updateForm.value.assigned_to || null
     if (Object.keys(payload).length) {
       await updateTicket(ticketId, payload)
       await loadTicket()
@@ -98,7 +100,17 @@ function scrollToBottom() {
   }
 }
 
-onMounted(loadTicket)
+async function loadStaff() {
+  try {
+    const { data } = await getUsers()
+    staffUsers.value = data
+  } catch { /* ignore */ }
+}
+
+onMounted(() => {
+  loadTicket()
+  loadStaff()
+})
 </script>
 
 <template>
@@ -230,7 +242,7 @@ onMounted(loadTicket)
               </div>
               <div class="flex justify-between">
                 <dt class="text-sm text-gray-500">Assigned To</dt>
-                <dd class="text-sm font-medium text-gray-900">{{ ticket.assigned_to || 'Unassigned' }}</dd>
+                <dd class="text-sm font-medium text-gray-900">{{ ticket.assigned_to_name || 'Unassigned' }}</dd>
               </div>
               <div class="flex justify-between">
                 <dt class="text-sm text-gray-500">Created</dt>
@@ -267,12 +279,13 @@ onMounted(loadTicket)
               </div>
               <div>
                 <label class="block text-xs font-medium text-gray-500 mb-1">Assigned To</label>
-                <input
+                <select
                   v-model="updateForm.assigned_to"
-                  type="text"
-                  placeholder="Staff name"
-                  class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                />
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                >
+                  <option value="">Unassigned</option>
+                  <option v-for="s in staffUsers" :key="s.id" :value="s.id">{{ s.full_name || s.username }}</option>
+                </select>
               </div>
               <button
                 type="submit"

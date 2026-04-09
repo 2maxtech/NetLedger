@@ -18,6 +18,7 @@ export interface TicketType {
   status: string
   priority: string
   assigned_to: string | null
+  assigned_to_name?: string | null
   resolved_at: string | null
   created_at: string
   messages?: TicketMessage[]
@@ -41,4 +42,8 @@ export function updateTicket(id: string, data: { status?: string; priority?: str
 
 export function addTicketMessage(id: string, data: { message: string; sender_type?: string }) {
   return api.post<TicketMessage>(`/tickets/${id}/messages`, data)
+}
+
+export function getTicketCounts() {
+  return api.get<{ open: number }>('/tickets/counts')
 }

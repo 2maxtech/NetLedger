@@ -41,6 +41,7 @@ class InvoiceGenerateRequest(BaseModel):
 class InvoiceUpdateRequest(BaseModel):
     status: InvoiceStatus | None = None
     amount: Decimal | None = None
+    due_date: date | None = None
 
 
 # --- Payment schemas ---

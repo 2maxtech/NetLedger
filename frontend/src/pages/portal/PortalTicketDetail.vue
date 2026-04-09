@@ -128,7 +128,7 @@ onMounted(fetchTicket)
             ]">
               <div class="flex items-center gap-2 mb-1">
                 <span class="text-xs font-semibold" :class="isCustomerMessage(msg) ? 'text-primary' : 'text-gray-600'">
-                  {{ isCustomerMessage(msg) ? 'You' : 'Staff' }}
+                  {{ isCustomerMessage(msg) ? 'You' : (msg.sender_name || 'Support') }}
                 </span>
                 <span class="text-xs text-gray-400">
                   {{ dayjs(msg.created_at).format('MMM D, h:mm A') }}

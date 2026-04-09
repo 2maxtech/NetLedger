@@ -47,7 +47,7 @@ export function generateInvoices(customerId?: string) {
   return api.post<{ generated: number; skipped: number }>('/billing/invoices/generate', customerId ? { customer_id: customerId } : {})
 }
 
-export function updateInvoice(id: string, data: { status?: string; amount?: number }) {
+export function updateInvoice(id: string, data: { status?: string; amount?: number; due_date?: string }) {
   return api.put(`/billing/invoices/${id}`, data)
 }
 

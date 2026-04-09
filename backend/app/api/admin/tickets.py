@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -20,6 +20,31 @@ from app.schemas.ticket import (
 )
 
 router = APIRouter(prefix="/tickets", tags=["tickets"])
+
+
+async def _resolve_assigned_names(db: AsyncSession, tickets: list) -> dict[uuid.UUID, str]:
+    """Build a map of user_id -> display name for assigned_to fields."""
+    assigned_ids = {t.assigned_to for t in tickets if t.assigned_to}
+    if not assigned_ids:
+        return {}
+    result = await db.execute(select(User).where(User.id.in_(assigned_ids)))
+    return {u.id: u.full_name or u.username for u in result.scalars().all()}
+
+
+@router.get("/counts")
+async def ticket_counts(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    tenant_id: str = Depends(get_tenant_id),
+):
+    tid = uuid.UUID(tenant_id)
+    result = await db.execute(
+        select(func.count()).select_from(Ticket).where(
+            Ticket.owner_id == tid,
+            Ticket.status.in_(["open", "in_progress"]),
+        )
+    )
+    return {"open": result.scalar() or 0}
 
 
 @router.get("/", response_model=list[TicketResponse])
@@ -44,10 +69,12 @@ async def list_tickets(
     query = query.order_by(Ticket.created_at.desc())
     result = await db.execute(query)
     tickets = result.scalars().all()
+    name_map = await _resolve_assigned_names(db, tickets)
     responses = []
     for t in tickets:
         resp = TicketResponse.model_validate(t)
         resp.customer_name = t.customer.full_name if t.customer else None
+        resp.assigned_to_name = name_map.get(t.assigned_to) if t.assigned_to else None
         responses.append(resp)
     return responses
 
@@ -111,8 +138,17 @@ async def get_ticket(
         for c in customers_result.scalars().all():
             name_map[c.id] = c.full_name
 
+    # Resolve assigned_to name
+    assigned_name = None
+    if ticket.assigned_to:
+        assigned_result = await db.execute(select(User).where(User.id == ticket.assigned_to))
+        assigned_user = assigned_result.scalar_one_or_none()
+        if assigned_user:
+            assigned_name = assigned_user.full_name or assigned_user.username
+
     resp = TicketResponse.model_validate(ticket)
     resp.customer_name = ticket.customer.full_name if ticket.customer else None
+    resp.assigned_to_name = assigned_name
     for msg in resp.messages:
         msg.sender_name = name_map.get(msg.sender_id)
     return resp
@@ -141,8 +177,16 @@ async def update_ticket(
 
     await db.flush()
     await db.refresh(ticket)
+    # Resolve assigned_to name
+    assigned_name = None
+    if ticket.assigned_to:
+        assigned_result = await db.execute(select(User).where(User.id == ticket.assigned_to))
+        au = assigned_result.scalar_one_or_none()
+        if au:
+            assigned_name = au.full_name or au.username
     resp = TicketResponse.model_validate(ticket)
     resp.customer_name = ticket.customer.full_name if ticket.customer else None
+    resp.assigned_to_name = assigned_name
     return resp
 
 
