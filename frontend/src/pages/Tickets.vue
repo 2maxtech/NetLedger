@@ -211,7 +211,7 @@ onMounted(() => {
               <td class="px-4 py-3 text-sm text-gray-700">{{ ticket.subject }}</td>
               <td class="px-4 py-3"><StatusBadge :status="ticket.status" /></td>
               <td class="px-4 py-3"><StatusBadge :status="ticket.priority" /></td>
-              <td class="px-4 py-3 text-sm text-gray-600">{{ ticket.assigned_to || '-' }}</td>
+              <td class="px-4 py-3 text-sm text-gray-600">{{ ticket.assigned_to_name || (ticket.assigned_to ? '...' : '-') }}</td>
               <td class="px-4 py-3 text-sm text-gray-500">{{ dayjs(ticket.created_at).format('MMM D, YYYY h:mm A') }}</td>
             </tr>
           </tbody>
