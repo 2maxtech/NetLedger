@@ -54,9 +54,10 @@ async def create_tables():
             "ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'staff'"
         ))
 
-    # Seed demo tenant (skips if already present)
-    from app.scripts.seed_demo import seed_demo_data
-    await seed_demo_data()
+    # Seed demo tenant (SaaS only — on-premise uses setup wizard)
+    if settings.DEPLOYMENT_MODE != "onpremise":
+        from app.scripts.seed_demo import seed_demo_data
+        await seed_demo_data()
 
 # Build allowed origins based on deployment mode
 _allowed_origins = ["https://netl.2max.tech", "http://localhost", "http://localhost:5173"]
