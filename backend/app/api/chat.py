@@ -424,5 +424,5 @@ async def upload_image(
 
     return UploadResponse(
         id=filename,
-        url=f"/uploads/chat/{filename}",
+        url=f"/api/v1/uploads/chat/{filename}",
     )

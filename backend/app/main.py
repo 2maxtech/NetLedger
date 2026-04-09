@@ -95,7 +95,7 @@ app.include_router(notice_router, prefix=settings.API_V1_PREFIX)
 # Serve uploaded files
 UPLOAD_DIR = "/app/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+app.mount("/api/v1/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 
 @app.get(f"{settings.API_V1_PREFIX}/releases/latest")
