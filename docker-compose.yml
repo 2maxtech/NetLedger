@@ -3,7 +3,7 @@ services:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: netbill
-      POSTGRES_PASSWORD: netbill
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD not set — create .env on this host with DB_PASSWORD=<current-db-password>}
       POSTGRES_DB: netbill
     ports:
       - "5432:5432"
@@ -27,7 +27,7 @@ services:
       - db
       - redis
     environment:
-      DATABASE_URL: postgresql+asyncpg://netbill:netbill@db:5432/netbill
+      DATABASE_URL: postgresql+asyncpg://netbill:${DB_PASSWORD:?DB_PASSWORD not set — create .env on this host with DB_PASSWORD=<current-db-password>}@db:5432/netbill
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: dev-secret-key-not-for-production
       MIKROTIK_URL: http://192.168.40.30
@@ -52,7 +52,7 @@ services:
       - db
       - redis
     environment:
-      DATABASE_URL: postgresql+asyncpg://netbill:netbill@db:5432/netbill
+      DATABASE_URL: postgresql+asyncpg://netbill:${DB_PASSWORD:?DB_PASSWORD not set — create .env on this host with DB_PASSWORD=<current-db-password>}@db:5432/netbill
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: dev-secret-key-not-for-production
       MIKROTIK_URL: http://192.168.40.30
@@ -69,7 +69,7 @@ services:
       - db
       - redis
     environment:
-      DATABASE_URL: postgresql+asyncpg://netbill:netbill@db:5432/netbill
+      DATABASE_URL: postgresql+asyncpg://netbill:${DB_PASSWORD:?DB_PASSWORD not set — create .env on this host with DB_PASSWORD=<current-db-password>}@db:5432/netbill
       REDIS_URL: redis://redis:6379/0
 
 volumes:
