@@ -241,6 +241,10 @@ async def record_payment(
                                         parent_queue=customer.plan.parent_queue,
                                     )
                                     await client.update_secret(customer.mikrotik_secret_id, {"profile": profile_name})
+                                try:
+                                    await client.enable_user_queues(customer.pppoe_username)
+                                except Exception as qe:
+                                    logger.warning(f"Enable shadow queues failed for {customer.id}: {qe}")
                         except Exception as e:
                             logger.error(f"MikroTik enable failed for {customer.id}: {e}")
                     else:
@@ -353,6 +357,10 @@ async def process_graduated_disconnect(db: AsyncSession, skip_network: bool = Fa
                                 throttle_rate = f"{settings.THROTTLE_UPLOAD_KBPS}k/{settings.THROTTLE_DOWNLOAD_MBPS}M"
                                 await client.ensure_profile(throttle_name, throttle_rate)
                                 await client.update_secret(customer.mikrotik_secret_id, {"profile": throttle_name})
+                                try:
+                                    await client.disable_user_queues(customer.pppoe_username)
+                                except Exception as qe:
+                                    logger.warning(f"Disable shadow queues failed for {customer.id}: {qe}")
                                 await client.kick_session(customer.pppoe_username)
                         except Exception as e:
                             logger.error(f"MikroTik throttle failed for {customer.id}: {e}")
@@ -388,6 +396,10 @@ async def process_graduated_disconnect(db: AsyncSession, skip_network: bool = Fa
                         try:
                             client, _ = await get_client_for_customer(db, customer)
                             if client:
+                                try:
+                                    await client.disable_user_queues(customer.pppoe_username)
+                                except Exception as qe:
+                                    logger.warning(f"Disable shadow queues failed for {customer.id}: {qe}")
                                 await client.disable_secret(customer.mikrotik_secret_id)
                                 await client.kick_session(customer.pppoe_username)
                         except Exception as e:

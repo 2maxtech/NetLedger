@@ -182,6 +182,71 @@ async def test_remove_queue_calls_delete():
 
 
 # ---------------------------------------------------------------------------
+# find_user_queues / disable_user_queues / enable_user_queues
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_find_user_queues_matches_by_name_and_interface():
+    client = _client()
+    queues = [
+        {".id": "*10", "name": "juan", "target": "10.0.0.1/32"},
+        {".id": "*11", "name": "other", "target": "<pppoe-juan>"},
+        {".id": "*12", "name": "unrelated", "target": "<pppoe-pedro>"},
+        {".id": "*13", "name": "combo", "target": "10.0.0.2/32,<pppoe-juan>"},
+    ]
+    with patch.object(client, "get_queues", new_callable=AsyncMock) as mock_q:
+        mock_q.return_value = queues
+        result = await client.find_user_queues("juan")
+    ids = [q[".id"] for q in result]
+    assert ids == ["*10", "*11", "*13"]
+
+
+@pytest.mark.asyncio
+async def test_disable_user_queues_skips_already_disabled():
+    client = _client()
+    queues = [
+        {".id": "*10", "name": "juan", "target": "10.0.0.1/32", "disabled": "false"},
+        {".id": "*11", "name": "other", "target": "<pppoe-juan>", "disabled": "true"},
+    ]
+    with patch.object(client, "get_queues", new_callable=AsyncMock) as mock_q, \
+         patch.object(client, "_request", new_callable=AsyncMock) as mock_req:
+        mock_q.return_value = queues
+        mock_req.return_value = _make_response(200, {})
+        count = await client.disable_user_queues("juan")
+    assert count == 1
+    mock_req.assert_awaited_once_with(
+        "PATCH", "queue/simple/*10", json={"disabled": "yes"}
+    )
+
+
+@pytest.mark.asyncio
+async def test_disable_user_queues_no_match_returns_zero():
+    client = _client()
+    with patch.object(client, "get_queues", new_callable=AsyncMock) as mock_q:
+        mock_q.return_value = [{".id": "*99", "name": "someone", "target": "1.1.1.1/32"}]
+        count = await client.disable_user_queues("juan")
+    assert count == 0
+
+
+@pytest.mark.asyncio
+async def test_enable_user_queues_only_touches_disabled():
+    client = _client()
+    queues = [
+        {".id": "*10", "name": "juan", "target": "10.0.0.1/32", "disabled": "true"},
+        {".id": "*11", "name": "other", "target": "<pppoe-juan>", "disabled": "false"},
+    ]
+    with patch.object(client, "get_queues", new_callable=AsyncMock) as mock_q, \
+         patch.object(client, "_request", new_callable=AsyncMock) as mock_req:
+        mock_q.return_value = queues
+        mock_req.return_value = _make_response(200, {})
+        count = await client.enable_user_queues("juan")
+    assert count == 1
+    mock_req.assert_awaited_once_with(
+        "PATCH", "queue/simple/*10", json={"disabled": "no"}
+    )
+
+
+# ---------------------------------------------------------------------------
 # get_active_sessions
 # ---------------------------------------------------------------------------
 

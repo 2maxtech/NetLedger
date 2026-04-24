@@ -160,6 +160,12 @@ async def _check_data_caps():
                                     )
                                     break
 
+                            try:
+                                await client.disable_user_queues(customer.pppoe_username)
+                            except Exception as qe:
+                                logger.warning(
+                                    f"Disable shadow queues failed for {customer.pppoe_username}: {qe}"
+                                )
                             await client.kick_session(customer.pppoe_username)
                             customer.status = CustomerStatus.suspended
 

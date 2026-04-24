@@ -44,6 +44,9 @@ def _mock_mt_client():
     mt.remove_nat_redirect.return_value = None
     mt.add_nat_redirect.return_value = "*NAT1"
     mt.get_nat_redirects.return_value = []
+    mt.disable_user_queues.return_value = 0
+    mt.enable_user_queues.return_value = 0
+    mt.find_user_queues.return_value = []
     return mt
 
 
@@ -326,6 +329,47 @@ async def test_throttle_changes_profile_on_mikrotik(client, auth_headers, test_p
     mt.update_secret.assert_awaited_once()
     update_args = mt.update_secret.call_args
     assert update_args[0][0] == "*NEW_SECRET"
+
+    # Must kick the active session so the new profile takes effect
+    mt.kick_session.assert_awaited_once_with("juan_thr")
+
+    # Must neutralise any pre-existing per-user simple queue shadowing the profile
+    mt.disable_user_queues.assert_awaited_once_with("juan_thr")
+
+
+@pytest.mark.asyncio
+async def test_disconnect_disables_shadow_queues(client, auth_headers, test_plan, test_router):
+    """Disconnect must also disable any per-user simple queue."""
+    data, _, _ = await create_customer_with_mt(client, auth_headers, test_plan.id, "_discq")
+    customer_id = data["id"]
+
+    with mock_mikrotik() as mt:
+        resp = await client.post(
+            f"{API}/customers/{customer_id}/disconnect",
+            headers=auth_headers,
+        )
+
+    assert resp.status_code == 200
+    mt.disable_user_queues.assert_awaited_once_with("juan_discq")
+
+
+@pytest.mark.asyncio
+async def test_reconnect_enables_shadow_queues(client, auth_headers, test_plan, test_router):
+    """Reconnect must re-enable any simple queue we disabled on throttle/disconnect."""
+    data, _, _ = await create_customer_with_mt(client, auth_headers, test_plan.id, "_reconq")
+    customer_id = data["id"]
+
+    with mock_mikrotik():
+        await client.post(f"{API}/customers/{customer_id}/disconnect", headers=auth_headers)
+
+    with mock_mikrotik() as mt:
+        resp = await client.post(
+            f"{API}/customers/{customer_id}/reconnect",
+            headers=auth_headers,
+        )
+
+    assert resp.status_code == 200
+    mt.enable_user_queues.assert_awaited_once_with("juan_reconq")
 
 
 # ===========================================================================

@@ -290,6 +290,67 @@ class MikroTikClient:
         await self._request("DELETE", f"queue/simple/{queue_id}")
         logger.info("Deleted simple queue %s", queue_id)
 
+    async def find_user_queues(self, username: str) -> list[dict]:
+        """Return simple queues that shadow a PPPoE user's bandwidth.
+
+        Matches by queue name == username, or target referencing the
+        auto-named PPPoE interface ``<pppoe-{username}>``.
+        """
+        queues = await self.get_queues()
+        interface_marker = f"<pppoe-{username}>"
+        result: list[dict] = []
+        for q in queues:
+            if q.get("name") == username:
+                result.append(q)
+                continue
+            target = q.get("target", "") or ""
+            if interface_marker in target:
+                result.append(q)
+        return result
+
+    async def disable_user_queues(self, username: str) -> int:
+        """Disable simple queues shadowing this PPPoE user. Returns count affected.
+
+        Existing per-user simple queues enforce bandwidth at the IP/interface
+        layer, shadowing the PPP profile's rate-limit. Disabling them lets the
+        profile (e.g. throttle) take effect after the session reconnects.
+        """
+        queues = await self.find_user_queues(username)
+        count = 0
+        for q in queues:
+            if q.get("disabled") == "true":
+                continue
+            await self._request(
+                "PATCH",
+                f"queue/simple/{q['.id']}",
+                json={"disabled": "yes"},
+            )
+            logger.info(
+                "Disabled simple queue %s (%s) shadowing %s",
+                q.get(".id"), q.get("name"), username,
+            )
+            count += 1
+        return count
+
+    async def enable_user_queues(self, username: str) -> int:
+        """Re-enable simple queues shadowing this PPPoE user. Returns count affected."""
+        queues = await self.find_user_queues(username)
+        count = 0
+        for q in queues:
+            if q.get("disabled") != "true":
+                continue
+            await self._request(
+                "PATCH",
+                f"queue/simple/{q['.id']}",
+                json={"disabled": "no"},
+            )
+            logger.info(
+                "Enabled simple queue %s (%s) for %s",
+                q.get(".id"), q.get("name"), username,
+            )
+            count += 1
+        return count
+
     # --- Active PPP Sessions ---
 
     async def get_active_sessions(self) -> list[dict]:

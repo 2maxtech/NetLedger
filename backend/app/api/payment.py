@@ -358,6 +358,10 @@ async def paymongo_webhook(request: Request, db: AsyncSession = Depends(get_db))
                                     parent_queue=customer.plan.parent_queue,
                                 )
                                 await client.update_secret(customer.mikrotik_secret_id, {"profile": profile_name})
+                            try:
+                                await client.enable_user_queues(customer.pppoe_username)
+                            except Exception as qe:
+                                logger.warning(f"Enable shadow queues via webhook failed for {customer.id}: {qe}")
                     except Exception as e:
                         logger.error(f"MikroTik reconnect via webhook failed for {customer.id}: {e}")
 

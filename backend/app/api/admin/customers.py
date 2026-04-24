@@ -472,6 +472,11 @@ async def disconnect_customer(
         try:
             client, _ = await get_client_for_customer(db, customer)
             if client:
+                # Disable any per-user simple queue so IP-based traffic (if any) stops
+                try:
+                    await client.disable_user_queues(customer.pppoe_username)
+                except Exception as qe:
+                    logger.warning(f"Failed to disable shadow queues for {customer.id}: {qe}")
                 await client.disable_secret(customer.mikrotik_secret_id)
                 response = {"detail": "PPPoE secret disabled"}
         except Exception as e:
@@ -559,6 +564,12 @@ async def reconnect_customer(
                 )
                 customer.mikrotik_secret_id = secret_id
                 response = {"detail": f"PPPoE secret recreated + enabled (id={secret_id})"}
+
+            # Re-enable any per-user simple queues we disabled on throttle/disconnect
+            try:
+                await client.enable_user_queues(customer.pppoe_username)
+            except Exception as qe:
+                logger.warning(f"Failed to enable shadow queues for {customer.id}: {qe}")
     except Exception as e:
         response = {"detail": f"MikroTik error: {e}"}
     logger.info(f"Customer {customer.id} status changed to active")
@@ -608,6 +619,16 @@ async def throttle_customer(
                 throttle_rate = f"{throttle_settings.THROTTLE_UPLOAD_KBPS}k/{throttle_settings.THROTTLE_DOWNLOAD_MBPS}M"
                 await client.ensure_profile(throttle_name, throttle_rate)
                 await client.update_secret(customer.mikrotik_secret_id, {"profile": throttle_name})
+                # Disable any per-user simple queue shadowing the throttle profile
+                try:
+                    await client.disable_user_queues(customer.pppoe_username)
+                except Exception as qe:
+                    logger.warning(f"Failed to disable shadow queues for {customer.id}: {qe}")
+                # Kick the active session so the new profile takes effect on reconnect
+                try:
+                    await client.kick_session(customer.pppoe_username)
+                except Exception as ke:
+                    logger.warning(f"Failed to kick session for {customer.id}: {ke}")
                 response = {"detail": f"Profile changed to {throttle_name}"}
         except Exception as e:
             response = {"detail": f"MikroTik error: {e}"}
